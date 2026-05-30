@@ -67,30 +67,32 @@ async function cropVideo(file) {
   const outputName = 'output.mp4';
 
   await ffmpeg.writeFile(inputName, await fetchFile(file));
-  await ffmpeg.exec([
-    '-i', inputName,
-    '-vf', 'crop=iw:iw*5/4:0:(ih-iw*5/4)/2',
-    '-c:a', 'copy',
-    outputName,
-  ]);
+  try {
+    await ffmpeg.exec([
+      '-i', inputName,
+      '-vf', 'crop=iw:iw*5/4:0:(ih-iw*5/4)/2',
+      '-c:a', 'copy',
+      outputName,
+    ]);
 
-  onProgress = null;
-  setBar('crop-bar', 'crop-pct', 100);
+    onProgress = null;
+    setBar('crop-bar', 'crop-pct', 100);
 
-  const data = await ffmpeg.readFile(outputName);
-  const blob = new Blob([data.buffer], { type: 'video/mp4' });
-  const url = URL.createObjectURL(blob);
+    const data = await ffmpeg.readFile(outputName);
+    const blob = new Blob([data], { type: 'video/mp4' });
+    const url = URL.createObjectURL(blob);
 
-  const baseName = file.name.slice(0, file.name.lastIndexOf('.'));
-  const btn = $('download-btn');
-  btn.href = url;
-  btn.download = `${baseName}_4x5.mp4`;
+    const baseName = file.name.slice(0, file.name.lastIndexOf('.'));
+    const btn = $('download-btn');
+    btn.href = url;
+    btn.download = `${baseName}_4x5.mp4`;
 
-  await ffmpeg.deleteFile(inputName);
-  await ffmpeg.deleteFile(outputName);
-
-  hide('processing-section');
-  show('download-section');
+    hide('processing-section');
+    show('download-section');
+  } finally {
+    try { await ffmpeg.deleteFile(inputName); } catch (_) {}
+    try { await ffmpeg.deleteFile(outputName); } catch (_) {}
+  }
 }
 
 function showError(msg) {
