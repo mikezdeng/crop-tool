@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crop Tool — 9:16 to 4:5</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>9:16 → 4:5</h1>
+    <p class="subtitle">Drop a vertical video, get the 4:5 version.</p>
+
+    <div id="drop-zone" class="drop-zone">
+      <span class="drop-icon">🎬</span>
+      <p>Drop your 9:16 video here</p>
+      <p class="hint">or click to browse</p>
+      <input type="file" id="file-input" accept=".mp4,.mov,.mkv" hidden>
+    </div>
+
+    <div id="loading-section" class="section hidden">
+      <p>Loading FFmpeg...</p>
+      <div class="progress-bar"><div id="load-bar" class="bar bar-pulse"></div></div>
+      <p class="hint">First time takes ~30 seconds. Instant after that.</p>
+    </div>
+
+    <div id="processing-section" class="section hidden">
+      <p>Cropping... <span id="crop-pct">0%</span></p>
+      <div class="progress-bar"><div id="crop-bar" class="bar" style="width:0%"></div></div>
+    </div>
+
+    <div id="download-section" class="section hidden">
+      <p class="done">Done!</p>
+      <a id="download-btn" class="btn-download">Download 4:5 Video</a>
+      <button id="reset-btn" class="btn-reset">Crop another video</button>
+    </div>
+
+    <div id="error-section" class="section hidden">
+      <p id="error-msg" class="error-msg"></p>
+      <button id="error-reset-btn" class="btn-reset">Try again</button>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
