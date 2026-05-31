@@ -1,4 +1,4 @@
-import { FFmpeg } from 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/esm/index.js';
+import { FFmpeg } from './vendor/ffmpeg/index.js';
 import { fetchFile, toBlobURL } from 'https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js';
 
 // Pure function: documents and tests the 9:16 → 4:5 center-crop math.
