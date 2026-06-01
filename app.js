@@ -26,15 +26,16 @@ function demuxFile(file) {
       else if (aTrack && id === aTrack.id) aSamples.push(...s);
     };
 
-    const guard = setTimeout(() => reject(new Error('Demux timed out — file may be unsupported')), 20_000);
-    box.onFlush = () => { clearTimeout(guard); resolve({ box, vTrack, aTrack, vSamples, aSamples }); };
-    box.onError = e => { clearTimeout(guard); reject(new Error(String(e))); };
+    box.onError = e => reject(new Error(String(e)));
 
+    // mp4box fires onReady + onSamples synchronously when given the full buffer,
+    // so resolve immediately after flush() — no need for onFlush callback
     file.arrayBuffer().then(ab => {
       try {
         ab.fileStart = 0;
         box.appendBuffer(ab);
         box.flush();
+        resolve({ box, vTrack, aTrack, vSamples, aSamples });
       } catch (e) { reject(e); }
     }).catch(reject);
   });
