@@ -43,17 +43,52 @@ function demuxFile(file) {
 
 function getExtradata(box, track) {
   try {
-    // DataStream is on MP4Box in browser builds, not a bare global
-    const DS = MP4Box.DataStream;
-    if (!DS) return undefined;
-    const trak = box.moov.traks.find(t => t.tkhd.track_id === track.id);
+    const trak = box.moov?.traks?.find(t => t.tkhd.track_id === track.id);
     const entry = trak?.mdia?.minf?.stbl?.stsd?.entries?.[0];
     if (!entry) return undefined;
+
     const b = entry.avcC || entry.hvcC || entry.vpcC || entry.av1C;
     if (!b) return undefined;
-    const ds = new DS(undefined, 0, DS.BIG_ENDIAN);
-    b.write(ds);
-    return new Uint8Array(ds.buffer, 8);
+
+    // Try mp4box DataStream serialization (box = 4b size + 4b type + data, skip 8b header)
+    const DS = MP4Box.DataStream ?? (typeof DataStream !== 'undefined' ? DataStream : null);
+    if (DS) {
+      try {
+        const ds = new DS(undefined, 0, DS.BIG_ENDIAN);
+        b.write(ds);
+        const pos = typeof ds.position === 'number' ? ds.position : ds.buffer.byteLength;
+        return new Uint8Array(ds.buffer, 8, pos - 8);
+      } catch (_) { /* fall through to manual */ }
+    }
+
+    // Manual AVCDecoderConfigurationRecord for H.264 when DataStream unavailable
+    if (!entry.avcC) return undefined;
+    const cfg = entry.avcC;
+    const spss = cfg.SPS || [];
+    const ppss = cfg.PPS || [];
+    const bufs = [new Uint8Array([
+      cfg.configurationVersion ?? 1,
+      cfg.AVCProfileIndication ?? 0x42,
+      cfg.profile_compatibility ?? 0,
+      cfg.AVCLevelIndication ?? 0x29,
+      0xFC | ((cfg.lengthSizeMinusOne ?? 3) & 3),
+      0xE0 | spss.length,
+    ])];
+    for (const s of spss) {
+      const n = s.nalu ?? s;
+      const h = new Uint8Array(2); new DataView(h.buffer).setUint16(0, n.length);
+      bufs.push(h, n);
+    }
+    bufs.push(new Uint8Array([ppss.length]));
+    for (const p of ppss) {
+      const n = p.nalu ?? p;
+      const h = new Uint8Array(2); new DataView(h.buffer).setUint16(0, n.length);
+      bufs.push(h, n);
+    }
+    const total = bufs.reduce((a, c) => a + c.length, 0);
+    const out = new Uint8Array(total); let off = 0;
+    for (const p of bufs) { out.set(p, off); off += p.length; }
+    return out;
   } catch { return undefined; }
 }
 
@@ -135,7 +170,10 @@ async function encodeFrames({ box, vTrack, samples, encoder, tsOffset, frameStar
       ...(extradata && { description: extradata }),
     });
 
+    let seenKey = false;
     for (const s of samples) {
+      if (!seenKey && !s.is_sync) continue; // VideoDecoder requires first chunk to be a keyframe
+      seenKey = true;
       decoder.decode(new EncodedVideoChunk({
         type: s.is_sync ? 'key' : 'delta',
         timestamp: s.cts * 1_000_000 / vTrack.timescale,
