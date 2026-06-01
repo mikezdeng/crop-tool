@@ -1,5 +1,3 @@
-import { Muxer, ArrayBufferTarget } from 'https://esm.sh/mp4-muxer@4.4.6';
-
 // WebCodecs-powered video processor — no FFmpeg, no WASM, no cold start
 
 const $ = id => document.getElementById(id);
@@ -183,8 +181,8 @@ function makeEncoder(muxer, W, H) {
 }
 
 function makeMuxer(W, H, aTrack) {
-  const target = new ArrayBufferTarget();
-  const muxer = new Muxer({
+  const target = new Mp4Muxer.ArrayBufferTarget();
+  const muxer = new Mp4Muxer.Muxer({
     target,
     video: { codec: 'avc', width: W, height: H },
     ...(aTrack && { audio: { codec: 'aac', sampleRate: aTrack.audio.sample_rate, numberOfChannels: aTrack.audio.channel_count } }),
