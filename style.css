@@ -8,35 +8,50 @@ body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 40px 24px;
+  padding: 32px 20px 60px;
 }
 
 .container {
   width: 100%;
   max-width: 520px;
+}
+
+.hidden { display: none !important; }
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 28px;
+  background: #1a1a1a;
+  padding: 4px;
+  border-radius: 12px;
+}
+.tab {
+  flex: 1;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 10px 0;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tab.active {
+  background: #2a2a2a;
+  color: #f0f0f0;
+}
+.tab:hover:not(.active) { color: #aaa; }
+
+/* ── Shared ── */
+.panel-sub {
+  color: #666;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
   text-align: center;
 }
-
-h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 8px; }
-.subtitle { color: #888; margin-bottom: 28px; }
-
-.drop-zone {
-  border: 2px dashed #444;
-  border-radius: 16px;
-  padding: 40px 32px;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s;
-}
-.drop-zone:hover, .drop-zone.drag-over {
-  border-color: #4ade80;
-  background: rgba(74, 222, 128, 0.05);
-}
-.drop-icon { font-size: 2.4rem; display: block; margin-bottom: 12px; }
-.drop-zone p { font-size: 1.05rem; margin-bottom: 4px; }
-.hint { color: #555; font-size: 0.82rem; margin-top: 6px; }
-
-.section { margin-top: 24px; }
-.hidden { display: none !important; }
 
 .progress-bar {
   background: #1e1e1e;
@@ -58,14 +73,32 @@ h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 8px; }
 }
 .bar-pulse { width: 100%; animation: pulse 1.5s ease-in-out infinite; }
 
-/* Queue list */
-#queue-list {
+.section { margin-top: 24px; }
+.hint { color: #555; font-size: 0.82rem; margin-top: 6px; }
+
+/* ── Crop tab ── */
+.drop-zone {
+  border: 2px dashed #444;
+  border-radius: 16px;
+  padding: 40px 32px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.05);
+}
+.drop-icon { font-size: 2.4rem; display: block; margin-bottom: 12px; }
+.drop-zone p { font-size: 1.05rem; margin-bottom: 4px; }
+
+/* ── Queue items (shared crop + stitch) ── */
+#queue-list, #stitch-queue {
   list-style: none;
-  margin-top: 20px;
+  margin-top: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  text-align: left;
 }
 
 .queue-item {
@@ -83,7 +116,7 @@ h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 8px; }
 
 .qi-name {
   flex: 1;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -92,17 +125,17 @@ h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 8px; }
 }
 
 .qi-status {
-  font-size: 0.75rem;
+  font-size: 0.73rem;
   font-weight: 600;
   padding: 3px 10px;
   border-radius: 20px;
   white-space: nowrap;
   flex-shrink: 0;
 }
-.status-waiting  { background: #2a2a2a; color: #666; }
+.status-waiting   { background: #222; color: #555; }
 .status-processing { background: rgba(74,222,128,0.12); color: #4ade80; }
-.status-done     { background: rgba(74,222,128,0.12); color: #4ade80; }
-.status-error    { background: rgba(248,113,113,0.12); color: #f87171; }
+.status-done      { background: rgba(74,222,128,0.12); color: #4ade80; }
+.status-error     { background: rgba(248,113,113,0.12); color: #f87171; }
 
 .qi-progress {
   display: flex;
@@ -111,7 +144,7 @@ h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 8px; }
   margin-top: 10px;
 }
 .qi-progress .progress-bar { flex: 1; margin-top: 0; }
-.qi-pct { font-size: 0.75rem; color: #666; min-width: 34px; text-align: right; }
+.qi-pct { font-size: 0.75rem; color: #555; min-width: 34px; text-align: right; }
 
 .qi-download {
   display: block;
@@ -127,3 +160,133 @@ h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 8px; }
   cursor: pointer;
 }
 .qi-download:hover { background: #22c55e; }
+
+/* ── Stitch tab ── */
+.stitch-block {
+  margin-bottom: 20px;
+}
+
+.stitch-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #555;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.mini-drop {
+  border: 2px dashed #333;
+  border-radius: 12px;
+  padding: 18px 20px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: #666;
+  transition: border-color 0.2s, background 0.2s;
+}
+.mini-drop:hover, .mini-drop.drag-over {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.05);
+  color: #aaa;
+}
+.mini-drop.has-file {
+  border-color: #4ade80;
+  color: #4ade80;
+}
+
+/* Hook slots */
+#hooks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.hook-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1a1a1a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  min-width: 0;
+}
+
+.hook-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #555;
+  white-space: nowrap;
+  min-width: 48px;
+}
+
+.hook-mini-drop {
+  flex: 1;
+  border: 1px dashed #333;
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: #555;
+  transition: border-color 0.2s, background 0.2s;
+}
+.hook-mini-drop:hover, .hook-mini-drop.drag-over {
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.04);
+  color: #aaa;
+}
+
+.hook-filename {
+  flex: 1;
+  font-size: 0.82rem;
+  color: #4ade80;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.hook-clear, .hook-remove {
+  background: none;
+  border: none;
+  color: #444;
+  cursor: pointer;
+  font-size: 0.8rem;
+  padding: 4px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.hook-clear:hover, .hook-remove:hover { color: #f87171; }
+
+.btn-add-hook {
+  background: none;
+  border: 1px dashed #333;
+  color: #555;
+  font-size: 0.82rem;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-add-hook:hover { border-color: #4ade80; color: #4ade80; }
+
+.btn-stitch {
+  display: block;
+  width: 100%;
+  background: #4ade80;
+  color: #000;
+  border: none;
+  padding: 14px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background 0.2s;
+}
+.btn-stitch:hover:not(:disabled) { background: #22c55e; }
+.btn-stitch:disabled { background: #1e1e1e; color: #444; cursor: not-allowed; }

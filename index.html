@@ -3,27 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Crop Tool — 9:16 to 4:5</title>
+  <title>Editor Tools</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <h1>9:16 → 4:5</h1>
-    <p class="subtitle">Drop videos, get 4:5 versions. Multiple files OK.</p>
+    <nav class="tabs">
+      <button class="tab active" data-tab="crop">Crop 9:16 → 4:5</button>
+      <button class="tab" data-tab="stitch">Hook Stitch</button>
+    </nav>
 
-    <div id="drop-zone" class="drop-zone">
-      <span class="drop-icon">🎬</span>
-      <p>Drop videos here</p>
-      <p class="hint">or click to browse</p>
-      <input type="file" id="file-input" accept=".mp4,.mov,.mkv" multiple hidden>
+    <!-- CROP PANEL -->
+    <div id="crop-panel" class="tab-panel">
+      <div id="drop-zone" class="drop-zone">
+        <span class="drop-icon">🎬</span>
+        <p>Drop videos here</p>
+        <p class="hint">or click to browse — multiple files OK</p>
+        <input type="file" id="file-input" accept=".mp4,.mov,.mkv" multiple hidden>
+      </div>
+
+      <div id="loading-section" class="section hidden">
+        <p>Loading FFmpeg... <span class="hint">(first time only, ~20s)</span></p>
+        <div class="progress-bar"><div id="load-bar" class="bar bar-pulse"></div></div>
+      </div>
+
+      <ul id="queue-list"></ul>
     </div>
 
-    <div id="loading-section" class="section hidden">
-      <p>Loading FFmpeg... <span class="hint">(first time only, ~20s)</span></p>
-      <div class="progress-bar"><div id="load-bar" class="bar bar-pulse"></div></div>
-    </div>
+    <!-- STITCH PANEL -->
+    <div id="stitch-panel" class="tab-panel hidden">
+      <p class="panel-sub">Upload a base video and your hooks. Get one stitched file per hook.</p>
 
-    <ul id="queue-list"></ul>
+      <div class="stitch-block">
+        <p class="stitch-label">BASE VIDEO</p>
+        <div id="base-drop" class="mini-drop">
+          <span id="base-drop-text">Drop base video or click</span>
+          <input type="file" id="base-input" accept=".mp4,.mov,.mkv" hidden>
+        </div>
+      </div>
+
+      <div class="stitch-block">
+        <p class="stitch-label">HOOKS</p>
+        <div id="hooks-container"></div>
+        <button id="add-hook-btn" class="btn-add-hook">+ Add hook</button>
+      </div>
+
+      <button id="stitch-btn" class="btn-stitch" disabled>Stitch All</button>
+
+      <ul id="stitch-queue"></ul>
+    </div>
   </div>
 
   <script>
