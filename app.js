@@ -186,6 +186,7 @@ function makeMuxer(W, H, aTrack) {
     target,
     video: { codec: 'avc', width: W, height: H },
     ...(aTrack && { audio: { codec: 'aac', sampleRate: aTrack.audio.sample_rate, numberOfChannels: aTrack.audio.channel_count } }),
+    fastStart: 'in-memory',
     firstTimestampBehavior: 'offset',
   });
   return { muxer, target };
