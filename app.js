@@ -1,16 +1,12 @@
 import { FFmpeg } from './vendor/ffmpeg/index.js';
 import { fetchFile } from 'https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js';
 
-// Pure function: documents and tests the 9:16 → 4:5 center-crop math.
-// The FFmpeg exec below uses equivalent native expressions (crop=iw:iw*5/4:...)
-// so no dimension probing is needed at runtime.
 function getCropParams(inputWidth, inputHeight) {
   const outHeight = Math.floor(inputWidth * 5 / 4);
   const yOffset = Math.floor((inputHeight - outHeight) / 2);
   return `crop=${inputWidth}:${outHeight}:0:${yOffset}`;
 }
 
-// Self-tests
 (function selfTest() {
   try {
     const a = getCropParams(1080, 1920);
@@ -23,23 +19,18 @@ function getCropParams(inputWidth, inputHeight) {
   }
 })();
 
-// DOM helpers
 const $ = (id) => document.getElementById(id);
 function show(id) { $(id).classList.remove('hidden'); }
 function hide(id) { $(id).classList.add('hidden'); }
-function setBar(barId, pctId, pct) {
-  $(barId).style.width = `${pct}%`;
-  if (pctId) $(pctId).textContent = `${pct}%`;
-}
 
-// FFmpeg state
+// FFmpeg — single instance, loaded once
 const ffmpeg = new FFmpeg();
 let ffmpegLoaded = false;
-let onProgress = null;
 
-// Single persistent progress listener — callback swapped per-operation
+// Single persistent progress listener — delegates to whichever item is currently processing
+let currentItem = null;
 ffmpeg.on('progress', ({ progress }) => {
-  if (onProgress) onProgress(progress);
+  if (currentItem) setItemProgress(currentItem, Math.min(Math.round(progress * 100), 99));
 });
 
 async function loadFFmpeg() {
@@ -54,77 +45,143 @@ async function loadFFmpeg() {
   hide('loading-section');
 }
 
-async function cropVideo(file) {
-  show('processing-section');
-  setBar('crop-bar', 'crop-pct', 0);
+// Queue
+const queue = [];
+let isProcessing = false;
+let nextId = 0;
 
-  onProgress = (progress) => {
-    setBar('crop-bar', 'crop-pct', Math.min(Math.round(progress * 100), 99));
-  };
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
-  const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
-  const inputName = `input${ext}`;
-  const outputName = 'output.mp4';
+function createQueueItem(item) {
+  const li = document.createElement('li');
+  li.className = 'queue-item';
+  li.id = `qi-${item.id}`;
+  li.innerHTML = `
+    <div class="qi-top">
+      <span class="qi-name">${escapeHtml(item.file.name)}</span>
+      <span class="qi-status status-waiting">Waiting</span>
+    </div>
+    <div class="qi-progress hidden">
+      <div class="progress-bar"><div class="bar" style="width:0%"></div></div>
+      <span class="qi-pct">0%</span>
+    </div>
+    <a class="qi-download hidden">Download</a>
+  `;
+  $('queue-list').appendChild(li);
+}
 
-  await ffmpeg.writeFile(inputName, await fetchFile(file));
+function updateQueueItem(item) {
+  const li = $(`qi-${item.id}`);
+  if (!li) return;
+  const statusEl = li.querySelector('.qi-status');
+  const progressEl = li.querySelector('.qi-progress');
+  const downloadEl = li.querySelector('.qi-download');
+
+  statusEl.className = 'qi-status';
+  progressEl.classList.add('hidden');
+  downloadEl.classList.add('hidden');
+
+  switch (item.state) {
+    case 'waiting':
+      statusEl.classList.add('status-waiting');
+      statusEl.textContent = 'Waiting';
+      break;
+    case 'processing':
+      statusEl.classList.add('status-processing');
+      statusEl.textContent = 'Processing';
+      progressEl.classList.remove('hidden');
+      break;
+    case 'done':
+      statusEl.classList.add('status-done');
+      statusEl.textContent = 'Done ✓';
+      downloadEl.classList.remove('hidden');
+      downloadEl.href = item.blobUrl;
+      const baseName = item.file.name.slice(0, item.file.name.lastIndexOf('.'));
+      downloadEl.download = `${baseName}_4x5.mp4`;
+      break;
+    case 'error':
+      statusEl.classList.add('status-error');
+      statusEl.textContent = `Error: ${item.error || 'unknown'}`;
+      break;
+  }
+}
+
+function setItemProgress(item, pct) {
+  const li = $(`qi-${item.id}`);
+  if (!li) return;
+  li.querySelector('.bar').style.width = `${pct}%`;
+  li.querySelector('.qi-pct').textContent = `${pct}%`;
+}
+
+async function cropVideo(item) {
+  item.state = 'processing';
+  currentItem = item;
+  updateQueueItem(item);
+
+  const ext = item.file.name.slice(item.file.name.lastIndexOf('.')).toLowerCase();
+  const inputName = `input_${item.id}${ext}`;
+  const outputName = `output_${item.id}.mp4`;
+
+  await ffmpeg.writeFile(inputName, await fetchFile(item.file));
   try {
     await ffmpeg.exec([
       '-i', inputName,
       '-vf', 'crop=iw:iw*5/4:0:(ih-iw*5/4)/2',
+      '-c:v', 'libx264',
+      '-preset', 'ultrafast',
+      '-crf', '23',
       '-c:a', 'copy',
       outputName,
     ]);
 
-    onProgress = null;
-    setBar('crop-bar', 'crop-pct', 100);
+    setItemProgress(item, 100);
 
     const data = await ffmpeg.readFile(outputName);
     const blob = new Blob([data], { type: 'video/mp4' });
-    const url = URL.createObjectURL(blob);
-
-    const baseName = file.name.slice(0, file.name.lastIndexOf('.'));
-    const btn = $('download-btn');
-    btn.href = url;
-    btn.download = `${baseName}_4x5.mp4`;
-
-    hide('processing-section');
-    show('download-section');
+    item.blobUrl = URL.createObjectURL(blob);
+    item.state = 'done';
+    updateQueueItem(item);
   } finally {
+    currentItem = null;
     try { await ffmpeg.deleteFile(inputName); } catch (_) {}
     try { await ffmpeg.deleteFile(outputName); } catch (_) {}
   }
 }
 
-function showError(msg) {
-  hide('loading-section');
-  hide('processing-section');
-  $('error-msg').textContent = msg;
-  show('error-section');
-}
-
-function resetUI() {
-  ['download-section', 'error-section', 'processing-section'].forEach(hide);
-  show('drop-zone');
-  $('file-input').value = '';
-  const btn = $('download-btn');
-  if (btn.href && btn.href.startsWith('blob:')) URL.revokeObjectURL(btn.href);
-  btn.removeAttribute('href');
-}
-
-async function handleFile(file) {
-  const allowedExts = ['.mp4', '.mov', '.mkv'];
-  const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
-  if (!allowedExts.includes(ext)) {
-    showError(`Unsupported file: ${file.name}. Use MP4, MOV, or MKV.`);
-    return;
-  }
-  hide('drop-zone');
+async function processNext() {
+  if (isProcessing) return;
+  const next = queue.find(i => i.state === 'waiting');
+  if (!next) return;
+  isProcessing = true;
   try {
     await loadFFmpeg();
-    await cropVideo(file);
-  } catch (err) {
-    showError(`Something went wrong: ${err.message || 'Unknown error'}`);
+    await cropVideo(next);
+  } catch (e) {
+    next.state = 'error';
+    next.error = e.message || 'Unknown error';
+    currentItem = null;
+    updateQueueItem(next);
   }
+  isProcessing = false;
+  processNext();
+}
+
+function enqueueFiles(files) {
+  const allowed = ['.mp4', '.mov', '.mkv'];
+  for (const file of files) {
+    const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+    const item = { file, id: nextId++, state: 'waiting' };
+    queue.push(item);
+    createQueueItem(item);
+    if (!allowed.includes(ext)) {
+      item.state = 'error';
+      item.error = 'Use MP4, MOV, or MKV';
+      updateQueueItem(item);
+    }
+  }
+  processNext();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -133,7 +190,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   dropZone.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', (e) => {
-    if (e.target.files[0]) handleFile(e.target.files[0]);
+    if (e.target.files.length) enqueueFiles(Array.from(e.target.files));
+    fileInput.value = '';
   });
 
   dropZone.addEventListener('dragover', (e) => {
@@ -144,9 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
   dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
-    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files.length) enqueueFiles(Array.from(e.dataTransfer.files));
   });
-
-  $('reset-btn').addEventListener('click', resetUI);
-  $('error-reset-btn').addEventListener('click', resetUI);
 });
