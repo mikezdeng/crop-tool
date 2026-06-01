@@ -39,12 +39,15 @@ function demuxFile(file) {
 
 function getExtradata(box, track) {
   try {
+    // DataStream is on MP4Box in browser builds, not a bare global
+    const DS = MP4Box.DataStream;
+    if (!DS) return undefined;
     const trak = box.moov.traks.find(t => t.tkhd.track_id === track.id);
     const entry = trak?.mdia?.minf?.stbl?.stsd?.entries?.[0];
     if (!entry) return undefined;
     const b = entry.avcC || entry.hvcC || entry.vpcC || entry.av1C;
     if (!b) return undefined;
-    const ds = new DataStream(undefined, 0, DataStream.BIG_ENDIAN);
+    const ds = new DS(undefined, 0, DS.BIG_ENDIAN);
     b.write(ds);
     return new Uint8Array(ds.buffer, 8);
   } catch { return undefined; }
@@ -164,7 +167,7 @@ function makeEncoder(muxer, W, H) {
     error: e => { encErr = e; },
   });
   encoder.configure({
-    codec: 'avc1.42E01E',
+    codec: 'avc1.4d0029',
     width: W,
     height: H,
     bitrate: 4_000_000,
