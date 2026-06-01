@@ -26,14 +26,17 @@ function demuxFile(file) {
       else if (aTrack && id === aTrack.id) aSamples.push(...s);
     };
 
-    box.onFlush = () => resolve({ box, vTrack, aTrack, vSamples, aSamples });
-    box.onError = e => reject(new Error(String(e)));
+    const guard = setTimeout(() => reject(new Error('Demux timed out — file may be unsupported')), 20_000);
+    box.onFlush = () => { clearTimeout(guard); resolve({ box, vTrack, aTrack, vSamples, aSamples }); };
+    box.onError = e => { clearTimeout(guard); reject(new Error(String(e))); };
 
     file.arrayBuffer().then(ab => {
-      ab.fileStart = 0;
-      box.appendBuffer(ab);
-      box.flush();
-    }, reject);
+      try {
+        ab.fileStart = 0;
+        box.appendBuffer(ab);
+        box.flush();
+      } catch (e) { reject(e); }
+    }).catch(reject);
   });
 }
 
