@@ -23,7 +23,7 @@ ffmpeg.on('log', ({ message }) => {
 });
 
 ffmpeg.on('progress', ({ progress }) => {
-  if (currentItem) setItemProgress(currentItem, Math.min(Math.round(progress * 100), 99));
+  if (currentItem) setItemProgress(currentItem, Math.max(0, Math.min(Math.round(progress * 100), 99)));
 });
 
 async function loadFFmpeg() {
@@ -284,24 +284,44 @@ async function stitchPair(item, baseInWasm) {
   const hookName = `stitch_hook_${item.id}${hookExt}`;
   const outName = `stitch_out_${item.id}.mp4`;
 
-  const listName = `stitch_list_${item.id}.txt`;
   await ffmpeg.writeFile(hookName, await fetchFile(item.hookFile));
-  await ffmpeg.writeFile(listName, `file '${hookName}'\nfile '${baseInWasm}'\n`);
   try {
     lastLogs = [];
-    const ret = await ffmpeg.exec([
-      '-f', 'concat',
-      '-safe', '0',
-      '-i', listName,
+
+    // Try concat with audio (setpts normalises timestamps — needed for MOV files)
+    let ret = await ffmpeg.exec([
+      '-i', hookName,
+      '-i', baseInWasm,
+      '-filter_complex',
+        '[0:v]setpts=PTS-STARTPTS[v0];[0:a]asetpts=PTS-STARTPTS[a0];' +
+        '[1:v]setpts=PTS-STARTPTS[v1];[1:a]asetpts=PTS-STARTPTS[a1];' +
+        '[v0][a0][v1][a1]concat=n=2:v=1:a=1[outv][outa]',
+      '-map', '[outv]', '-map', '[outa]',
       '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
-      '-c:a', 'aac',
-      '-y',
-      outName,
+      '-c:a', 'aac', '-ar', '44100', '-ac', '2',
+      '-y', outName,
     ]);
+
+    // Fallback: video-only concat (if either input has no audio track)
     if (ret !== 0) {
-      const hint = lastLogs.filter(l => l.includes('Error') || l.includes('error') || l.includes('Invalid')).slice(-2).join(' | ');
-      throw new Error(`FFmpeg failed (code ${ret})${hint ? ': ' + hint : '. Videos may have incompatible formats.'}`);
+      lastLogs = [];
+      ret = await ffmpeg.exec([
+        '-i', hookName,
+        '-i', baseInWasm,
+        '-filter_complex',
+          '[0:v]setpts=PTS-STARTPTS[v0];[1:v]setpts=PTS-STARTPTS[v1];' +
+          '[v0][v1]concat=n=2:v=1:a=0[outv]',
+        '-map', '[outv]',
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
+        '-y', outName,
+      ]);
     }
+
+    if (ret !== 0) {
+      const hint = lastLogs.filter(l => /error|invalid/i.test(l)).slice(-2).join(' | ');
+      throw new Error(`Stitch failed (code ${ret})${hint ? ': ' + hint : ''}`);
+    }
+
     setItemProgress(item, 100);
     const data = await ffmpeg.readFile(outName);
     item.blobUrl = URL.createObjectURL(new Blob([data], { type: 'video/mp4' }));
@@ -311,7 +331,6 @@ async function stitchPair(item, baseInWasm) {
     currentItem = null;
     try { await ffmpeg.deleteFile(hookName); } catch (_) {}
     try { await ffmpeg.deleteFile(outName); } catch (_) {}
-    try { await ffmpeg.deleteFile(listName); } catch (_) {}
   }
 }
 
