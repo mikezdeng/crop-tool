@@ -205,15 +205,22 @@ function addAudioPassthrough(muxer, aTrack, samples, tsOffset) {
 function makeEncoder(muxer, W, H) {
   let encErr = null;
   const encoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    output: (chunk, meta) => {
+      try {
+        muxer.addVideoChunk(chunk, meta);
+      } catch (e) {
+        // Catch muxer errors here — if they propagate out of the output callback
+        // WebCodecs closes the encoder, causing all subsequent encode() calls to fail
+        encErr = encErr || e;
+      }
+    },
     error: e => { encErr = e; },
   });
   encoder.configure({
-    codec: 'avc1.4d0029',
+    codec: 'avc1.420029', // Baseline Profile — no B-frames, so timestamps stay monotonic for the muxer
     width: W,
     height: H,
     bitrate: 4_000_000,
-    hardwareAcceleration: 'prefer-hardware',
   });
   return { encoder, getErr: () => encErr };
 }
