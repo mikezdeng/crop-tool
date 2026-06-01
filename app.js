@@ -1,4 +1,4 @@
-import { Muxer, ArrayBufferTarget } from 'https://cdn.jsdelivr.net/npm/mp4-muxer@4.4.6/build/mp4-muxer.js';
+import { Muxer, ArrayBufferTarget } from 'https://esm.sh/mp4-muxer@4.4.6';
 
 // WebCodecs-powered video processor — no FFmpeg, no WASM, no cold start
 
