@@ -13,12 +13,6 @@
       <button class="tab" data-tab="stitch">Hook Stitch</button>
     </nav>
 
-    <!-- Shared FFmpeg loader (visible regardless of active tab) -->
-    <div id="loading-section" class="section hidden">
-      <p>Loading FFmpeg... <span class="hint">(first time only, ~20s)</span></p>
-      <div class="progress-bar"><div id="load-bar" class="bar bar-pulse"></div></div>
-    </div>
-
     <!-- CROP PANEL -->
     <div id="crop-panel" class="tab-panel">
       <div id="drop-zone" class="drop-zone">
@@ -27,7 +21,6 @@
         <p class="hint">or click to browse — multiple files OK</p>
         <input type="file" id="file-input" accept=".mp4,.mov,.mkv" multiple hidden>
       </div>
-
       <ul id="queue-list"></ul>
     </div>
 
@@ -54,18 +47,17 @@
       </div>
 
       <button id="stitch-btn" class="btn-stitch" disabled>Stitch All</button>
-
       <ul id="stitch-queue"></ul>
     </div>
   </div>
 
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(regs => {
-        regs.forEach(r => r.unregister());
-      });
+      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
     }
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@4.4.6/build/mp4-muxer.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
