@@ -39,10 +39,7 @@ body {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.tab.active {
-  background: #2a2a2a;
-  color: #f0f0f0;
-}
+.tab.active { background: #2a2a2a; color: #f0f0f0; }
 .tab:hover:not(.active) { color: #aaa; }
 
 /* ── Shared ── */
@@ -76,7 +73,7 @@ body {
 .section { margin-top: 24px; }
 .hint { color: #555; font-size: 0.82rem; margin-top: 6px; }
 
-/* ── Crop tab ── */
+/* ── Crop drop zone ── */
 .drop-zone {
   border: 2px dashed #444;
   border-radius: 16px;
@@ -92,7 +89,7 @@ body {
 .drop-icon { font-size: 2.4rem; display: block; margin-bottom: 12px; }
 .drop-zone p { font-size: 1.05rem; margin-bottom: 4px; }
 
-/* ── Queue items (shared crop + stitch) ── */
+/* ── Queue items (crop + stitch shared) ── */
 #queue-list, #stitch-queue {
   list-style: none;
   margin-top: 16px;
@@ -132,10 +129,10 @@ body {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.status-waiting   { background: #222; color: #555; }
+.status-waiting    { background: #222; color: #555; }
 .status-processing { background: rgba(74,222,128,0.12); color: #4ade80; }
-.status-done      { background: rgba(74,222,128,0.12); color: #4ade80; }
-.status-error     { background: rgba(248,113,113,0.12); color: #f87171; }
+.status-done       { background: rgba(74,222,128,0.12); color: #4ade80; }
+.status-error      { background: rgba(248,113,113,0.12); color: #f87171; }
 
 .qi-progress {
   display: flex;
@@ -162,9 +159,7 @@ body {
 .qi-download:hover { background: #22c55e; }
 
 /* ── Stitch tab ── */
-.stitch-block {
-  margin-bottom: 20px;
-}
+.stitch-block { margin-bottom: 20px; }
 
 .stitch-label {
   font-size: 0.7rem;
@@ -178,12 +173,12 @@ body {
 .mini-drop {
   border: 2px dashed #333;
   border-radius: 12px;
-  padding: 18px 20px;
+  padding: 20px;
   text-align: center;
   cursor: pointer;
   font-size: 0.88rem;
   color: #666;
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
 }
 .mini-drop:hover, .mini-drop.drag-over {
   border-color: #4ade80;
@@ -195,84 +190,40 @@ body {
   color: #4ade80;
 }
 
-/* Hook slots */
-#hooks-container {
+/* Hook list (shown after hooks are selected) */
+#hooks-list {
+  list-style: none;
+  margin-top: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 4px;
 }
 
-.hook-slot {
+.hook-list-item {
   display: flex;
   align-items: center;
   gap: 10px;
+  padding: 7px 12px;
   background: #1a1a1a;
-  border-radius: 10px;
-  padding: 10px 14px;
-  min-width: 0;
-}
-
-.hook-num {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #555;
-  white-space: nowrap;
-  min-width: 48px;
-}
-
-.hook-mini-drop {
-  flex: 1;
-  border: 1px dashed #333;
   border-radius: 8px;
-  padding: 10px 14px;
-  text-align: center;
-  cursor: pointer;
   font-size: 0.82rem;
-  color: #555;
-  transition: border-color 0.2s, background 0.2s;
-}
-.hook-mini-drop:hover, .hook-mini-drop.drag-over {
-  border-color: #4ade80;
-  background: rgba(74, 222, 128, 0.04);
-  color: #aaa;
 }
 
-.hook-filename {
+.hook-list-item .hook-num {
+  color: #555;
+  font-weight: 700;
+  min-width: 50px;
+  flex-shrink: 0;
+}
+
+.hook-list-item .hook-filename {
+  color: #ccc;
   flex: 1;
-  font-size: 0.82rem;
-  color: #4ade80;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
 }
-
-.hook-clear, .hook-remove {
-  background: none;
-  border: none;
-  color: #444;
-  cursor: pointer;
-  font-size: 0.8rem;
-  padding: 4px 6px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.hook-clear:hover, .hook-remove:hover { color: #f87171; }
-
-.btn-add-hook {
-  background: none;
-  border: 1px dashed #333;
-  color: #555;
-  font-size: 0.82rem;
-  padding: 8px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-  width: 100%;
-  transition: border-color 0.2s, color 0.2s;
-}
-.btn-add-hook:hover { border-color: #4ade80; color: #4ade80; }
 
 .btn-stitch {
   display: block;
@@ -285,7 +236,7 @@ body {
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
-  margin-top: 20px;
+  margin-top: 8px;
   transition: background 0.2s;
 }
 .btn-stitch:hover:not(:disabled) { background: #22c55e; }

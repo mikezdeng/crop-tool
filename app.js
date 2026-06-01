@@ -7,7 +7,7 @@ const $ = (id) => document.getElementById(id);
 function show(id) { $(id).classList.remove('hidden'); }
 function hide(id) { $(id).classList.add('hidden'); }
 function escapeHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ─── FFmpeg (shared) ─────────────────────────────────────────────────────────
@@ -30,6 +30,8 @@ async function loadFFmpeg() {
 }
 
 // ─── Shared queue item UI ────────────────────────────────────────────────────
+
+let nextId = 0;
 
 function createQueueItem(item, listEl) {
   const li = document.createElement('li');
@@ -88,8 +90,6 @@ function setItemProgress(item, pct) {
   li.querySelector('.bar').style.width = `${pct}%`;
   li.querySelector('.qi-pct').textContent = `${pct}%`;
 }
-
-let nextId = 0;
 
 // ─── CROP TAB ────────────────────────────────────────────────────────────────
 
@@ -163,97 +163,71 @@ async function cropVideo(item) {
 // ─── STITCH TAB ───────────────────────────────────────────────────────────────
 
 let stitchBaseFile = null;
-const stitchHooks = [{ file: null }, { file: null }, { file: null }]; // start with 3 slots
-const MAX_HOOKS = 5;
+let stitchHookFiles = [];
 const stitchQueue = [];
 let stitchProcessing = false;
+let stitchBaseInWasm = null;
 
 function setBaseFile(file) {
   stitchBaseFile = file;
   const drop = $('base-drop');
   drop.classList.toggle('has-file', !!file);
-  $('base-drop-text').textContent = file ? `✓ ${file.name}` : 'Drop base video or click';
+  $('base-drop-text').textContent = file ? `✓  ${file.name}` : 'Drop base video or click';
   updateStitchBtn();
 }
 
-function setHookFile(idx, file) {
-  stitchHooks[idx].file = file;
-  renderHookSlots();
+function setHookFiles(files) {
+  const allowed = ['.mp4', '.mov', '.mkv'];
+  stitchHookFiles = Array.from(files).filter(f => {
+    const ext = f.name.slice(f.name.lastIndexOf('.')).toLowerCase();
+    return allowed.includes(ext);
+  });
+
+  const drop = $('hooks-drop');
+  const text = $('hooks-drop-text');
+  const hint = $('hooks-hint');
+
+  if (stitchHookFiles.length > 0) {
+    drop.classList.add('has-file');
+    text.textContent = `✓  ${stitchHookFiles.length} hook${stitchHookFiles.length !== 1 ? 's' : ''} loaded — drop to replace`;
+    hint.classList.add('hidden');
+  } else {
+    drop.classList.remove('has-file');
+    text.textContent = 'Drop all hooks here or click';
+    hint.classList.remove('hidden');
+  }
+
+  renderHooksList();
   updateStitchBtn();
 }
 
-function updateStitchBtn() {
-  const hasBase = !!stitchBaseFile;
-  const hasHook = stitchHooks.some(h => h.file);
-  $('stitch-btn').disabled = !(hasBase && hasHook);
-}
-
-function renderHookSlots() {
-  const container = $('hooks-container');
-  container.innerHTML = '';
-  stitchHooks.forEach((hook, i) => {
-    const div = document.createElement('div');
-    div.className = 'hook-slot';
-    if (hook.file) {
-      div.innerHTML = `
-        <span class="hook-num">Hook ${i + 1}</span>
-        <span class="hook-filename">${escapeHtml(hook.file.name)}</span>
-        <button class="hook-clear" data-index="${i}">×</button>
-      `;
-      div.querySelector('.hook-clear').addEventListener('click', () => {
-        stitchHooks[i].file = null;
-        renderHookSlots();
-        updateStitchBtn();
-      });
-    } else {
-      div.innerHTML = `
-        <span class="hook-num">Hook ${i + 1}</span>
-        <div class="hook-mini-drop" data-index="${i}">
-          <span>Drop or click</span>
-          <input class="hook-input" type="file" data-index="${i}" accept=".mp4,.mov,.mkv" hidden>
-        </div>
-        ${stitchHooks.length > 1 ? `<button class="hook-remove" data-index="${i}">Remove</button>` : ''}
-      `;
-      const miniDrop = div.querySelector('.hook-mini-drop');
-      const input = div.querySelector('.hook-input');
-      miniDrop.addEventListener('click', () => input.click());
-      miniDrop.addEventListener('dragover', e => { e.preventDefault(); miniDrop.classList.add('drag-over'); });
-      miniDrop.addEventListener('dragleave', () => miniDrop.classList.remove('drag-over'));
-      miniDrop.addEventListener('drop', e => {
-        e.preventDefault();
-        miniDrop.classList.remove('drag-over');
-        if (e.dataTransfer.files[0]) setHookFile(i, e.dataTransfer.files[0]);
-      });
-      input.addEventListener('change', e => {
-        if (e.target.files[0]) setHookFile(i, e.target.files[0]);
-      });
-      const removeBtn = div.querySelector('.hook-remove');
-      if (removeBtn) {
-        removeBtn.addEventListener('click', () => {
-          stitchHooks.splice(i, 1);
-          renderHookSlots();
-          updateStitchBtn();
-        });
-      }
-    }
-    container.appendChild(div);
+function renderHooksList() {
+  const list = $('hooks-list');
+  list.innerHTML = '';
+  stitchHookFiles.forEach((file, i) => {
+    const li = document.createElement('li');
+    li.className = 'hook-list-item';
+    li.innerHTML = `<span class="hook-num">Hook ${i + 1}</span><span class="hook-filename">${escapeHtml(file.name)}</span>`;
+    list.appendChild(li);
   });
 }
 
+function updateStitchBtn() {
+  $('stitch-btn').disabled = !(stitchBaseFile && stitchHookFiles.length > 0);
+}
+
 function startStitch() {
-  if (!stitchBaseFile) return;
+  if (!stitchBaseFile || stitchHookFiles.length === 0) return;
   const baseName = stitchBaseFile.name.slice(0, stitchBaseFile.name.lastIndexOf('.'));
 
-  // Clear previous stitch results
   $('stitch-queue').innerHTML = '';
   stitchQueue.length = 0;
+  stitchBaseInWasm = null;
 
-  stitchHooks.forEach((hook, i) => {
-    if (!hook.file) return;
+  stitchHookFiles.forEach((hookFile, i) => {
     const item = {
-      hookFile: hook.file,
+      hookFile,
       baseFile: stitchBaseFile,
-      hookIndex: i + 1,
       id: nextId++,
       state: 'waiting',
       label: `${baseName}_hook_${i + 1}.mp4`,
@@ -266,13 +240,10 @@ function startStitch() {
   processNextStitch();
 }
 
-let stitchBaseInWasm = null; // filename of base written to WASM FS
-
 async function processNextStitch() {
   if (stitchProcessing) return;
   const next = stitchQueue.find(i => i.state === 'waiting');
   if (!next) {
-    // All done — clean up base from WASM
     if (stitchBaseInWasm) {
       try { await ffmpeg.deleteFile(stitchBaseInWasm); } catch (_) {}
       stitchBaseInWasm = null;
@@ -282,14 +253,11 @@ async function processNextStitch() {
   stitchProcessing = true;
   try {
     await loadFFmpeg();
-
-    // Write base once and reuse across all hooks
     if (!stitchBaseInWasm) {
       const baseExt = next.baseFile.name.slice(next.baseFile.name.lastIndexOf('.')).toLowerCase();
       stitchBaseInWasm = `stitch_base${baseExt}`;
       await ffmpeg.writeFile(stitchBaseInWasm, await fetchFile(next.baseFile));
     }
-
     await stitchPair(next, stitchBaseInWasm);
   } catch (e) {
     next.state = 'error';
@@ -347,7 +315,7 @@ function switchTab(name) {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Crop tab events
+  // Crop
   const dropZone = $('drop-zone');
   const fileInput = $('file-input');
   dropZone.addEventListener('click', () => fileInput.click());
@@ -363,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.dataTransfer.files.length) enqueueCropFiles(Array.from(e.dataTransfer.files));
   });
 
-  // Stitch tab events
+  // Stitch — base
   const baseDrop = $('base-drop');
   const baseInput = $('base-input');
   baseDrop.addEventListener('click', () => baseInput.click());
@@ -379,20 +347,26 @@ document.addEventListener('DOMContentLoaded', () => {
     baseInput.value = '';
   });
 
-  $('add-hook-btn').addEventListener('click', () => {
-    if (stitchHooks.length < MAX_HOOKS) {
-      stitchHooks.push({ file: null });
-      renderHookSlots();
-    }
+  // Stitch — hooks
+  const hooksDrop = $('hooks-drop');
+  const hooksInput = $('hooks-input');
+  hooksDrop.addEventListener('click', () => hooksInput.click());
+  hooksDrop.addEventListener('dragover', e => { e.preventDefault(); hooksDrop.classList.add('drag-over'); });
+  hooksDrop.addEventListener('dragleave', () => hooksDrop.classList.remove('drag-over'));
+  hooksDrop.addEventListener('drop', e => {
+    e.preventDefault();
+    hooksDrop.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) setHookFiles(e.dataTransfer.files);
+  });
+  hooksInput.addEventListener('change', e => {
+    if (e.target.files.length) setHookFiles(e.target.files);
+    hooksInput.value = '';
   });
 
   $('stitch-btn').addEventListener('click', startStitch);
 
-  // Tab switching
+  // Tabs
   document.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
-
-  // Initial render
-  renderHookSlots();
 });
