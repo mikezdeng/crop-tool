@@ -1,5 +1,5 @@
 import { FFmpeg } from './vendor/ffmpeg/index.js';
-import { fetchFile, toBlobURL } from 'https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js';
+import { fetchFile } from 'https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js';
 
 // Pure function: documents and tests the 9:16 → 4:5 center-crop math.
 // The FFmpeg exec below uses equivalent native expressions (crop=iw:iw*5/4:...)
@@ -45,10 +45,10 @@ ffmpeg.on('progress', ({ progress }) => {
 async function loadFFmpeg() {
   if (ffmpegLoaded) return;
   show('loading-section');
-  const base = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+  const base = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
   await ffmpeg.load({
-    coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
+    coreURL: `${base}/ffmpeg-core.js`,
+    wasmURL: `${base}/ffmpeg-core.wasm`,
   });
   ffmpegLoaded = true;
   hide('loading-section');
