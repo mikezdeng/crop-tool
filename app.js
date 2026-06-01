@@ -192,13 +192,14 @@ function addAudioPassthrough(muxer, aTrack, samples, tsOffset) {
   if (!aTrack || !samples.length) return;
   const asc = makeAsc(aTrack.audio.sample_rate, aTrack.audio.channel_count);
   const meta = asc ? { decoderConfig: { codec: aTrack.codec, description: asc } } : undefined;
-  for (const s of samples) {
-    muxer.addAudioChunkRaw(new EncodedAudioChunk({
+  for (let i = 0; i < samples.length; i++) {
+    const s = samples[i];
+    muxer.addAudioChunk(new EncodedAudioChunk({
       type: 'key',
       timestamp: s.cts * 1_000_000 / aTrack.timescale + tsOffset,
       duration: s.duration * 1_000_000 / aTrack.timescale,
       data: s.data,
-    }), meta);
+    }), i === 0 ? meta : undefined);
   }
 }
 
