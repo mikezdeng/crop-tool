@@ -13,6 +13,12 @@
       <button class="tab" data-tab="stitch">Hook Stitch</button>
     </nav>
 
+    <!-- Shared FFmpeg loader (visible regardless of active tab) -->
+    <div id="loading-section" class="section hidden">
+      <p>Loading FFmpeg... <span class="hint">(first time only, ~20s)</span></p>
+      <div class="progress-bar"><div id="load-bar" class="bar bar-pulse"></div></div>
+    </div>
+
     <!-- CROP PANEL -->
     <div id="crop-panel" class="tab-panel">
       <div id="drop-zone" class="drop-zone">
@@ -20,11 +26,6 @@
         <p>Drop videos here</p>
         <p class="hint">or click to browse — multiple files OK</p>
         <input type="file" id="file-input" accept=".mp4,.mov,.mkv" multiple hidden>
-      </div>
-
-      <div id="loading-section" class="section hidden">
-        <p>Loading FFmpeg... <span class="hint">(first time only, ~20s)</span></p>
-        <div class="progress-bar"><div id="load-bar" class="bar bar-pulse"></div></div>
       </div>
 
       <ul id="queue-list"></ul>

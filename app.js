@@ -15,6 +15,12 @@ function escapeHtml(s) {
 const ffmpeg = new FFmpeg();
 let ffmpegLoaded = false;
 let currentItem = null;
+let lastLogs = [];
+
+ffmpeg.on('log', ({ message }) => {
+  lastLogs.push(message);
+  if (lastLogs.length > 20) lastLogs.shift();
+});
 
 ffmpeg.on('progress', ({ progress }) => {
   if (currentItem) setItemProgress(currentItem, Math.min(Math.round(progress * 100), 99));
@@ -278,18 +284,24 @@ async function stitchPair(item, baseInWasm) {
   const hookName = `stitch_hook_${item.id}${hookExt}`;
   const outName = `stitch_out_${item.id}.mp4`;
 
+  const listName = `stitch_list_${item.id}.txt`;
   await ffmpeg.writeFile(hookName, await fetchFile(item.hookFile));
+  await ffmpeg.writeFile(listName, `file '${hookName}'\nfile '${baseInWasm}'\n`);
   try {
-    await ffmpeg.exec([
-      '-i', hookName,
-      '-i', baseInWasm,
-      '-filter_complex', '[0:v:0][0:a:0][1:v:0][1:a:0]concat=n=2:v=1:a=1[outv][outa]',
-      '-map', '[outv]',
-      '-map', '[outa]',
+    lastLogs = [];
+    const ret = await ffmpeg.exec([
+      '-f', 'concat',
+      '-safe', '0',
+      '-i', listName,
       '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
       '-c:a', 'aac',
+      '-y',
       outName,
     ]);
+    if (ret !== 0) {
+      const hint = lastLogs.filter(l => l.includes('Error') || l.includes('error') || l.includes('Invalid')).slice(-2).join(' | ');
+      throw new Error(`FFmpeg failed (code ${ret})${hint ? ': ' + hint : '. Videos may have incompatible formats.'}`);
+    }
     setItemProgress(item, 100);
     const data = await ffmpeg.readFile(outName);
     item.blobUrl = URL.createObjectURL(new Blob([data], { type: 'video/mp4' }));
@@ -299,6 +311,7 @@ async function stitchPair(item, baseInWasm) {
     currentItem = null;
     try { await ffmpeg.deleteFile(hookName); } catch (_) {}
     try { await ffmpeg.deleteFile(outName); } catch (_) {}
+    try { await ffmpeg.deleteFile(listName); } catch (_) {}
   }
 }
 
