@@ -143,7 +143,7 @@ function setItemProgress(item, pct) {
 
 // ─── Core encode pipeline ─────────────────────────────────────────────────────
 
-async function encodeFrames({ box, vTrack, samples, encoder, tsOffset, frameStart, totalFrames, onProgress, processFrame }) {
+async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, frameStart, totalFrames, onProgress, processFrame }) {
   let frameIdx = frameStart;
   let decErr = null;
 
@@ -184,7 +184,7 @@ async function encodeFrames({ box, vTrack, samples, encoder, tsOffset, frameStar
     decoder.flush().then(resolve, reject);
   });
 
-  if (decErr) throw decErr;
+  if (decErr) throw getErr?.() ?? decErr;
   return frameIdx;
 }
 
@@ -218,10 +218,11 @@ function makeEncoder(muxer, W, H) {
     error: e => { encErr = e; },
   });
   encoder.configure({
-    codec: 'avc1.420029', // Baseline Profile — no B-frames, so timestamps stay monotonic for the muxer
+    codec: 'avc1.640028', // High Profile L4.0 — hardware on macOS VideoToolbox; latencyMode disables B-frames
     width: W,
     height: H,
     bitrate: 4_000_000,
+    latencyMode: 'realtime', // no frame reordering → timestamps stay monotonic for mp4-muxer
   });
   return { encoder, getErr: () => encErr };
 }
@@ -285,7 +286,7 @@ async function cropVideo(item) {
     const ctx = canvas.getContext('2d');
 
     await encodeFrames({
-      box, vTrack, samples: vSamples, encoder, tsOffset: 0,
+      box, vTrack, samples: vSamples, encoder, getErr, tsOffset: 0,
       frameStart: 0, totalFrames: vSamples.length,
       onProgress: p => setItemProgress(item, Math.round(p * 90)),
       processFrame: (frame, ts) => {
@@ -410,14 +411,14 @@ async function stitchPair(item, baseData) {
     const totalFrames = hVS.length + bVS.length;
 
     const frameIdx = await encodeFrames({
-      box: hBox, vTrack: hVT, samples: hVS, encoder, tsOffset: 0,
+      box: hBox, vTrack: hVT, samples: hVS, encoder, getErr, tsOffset: 0,
       frameStart: 0, totalFrames,
       onProgress: p => setItemProgress(item, Math.round(p * 90)),
       processFrame: drawFrame,
     });
 
     await encodeFrames({
-      box: bBox, vTrack: bVT, samples: bVS, encoder, tsOffset: hookVideoDuration,
+      box: bBox, vTrack: bVT, samples: bVS, encoder, getErr, tsOffset: hookVideoDuration,
       frameStart: frameIdx, totalFrames,
       onProgress: p => setItemProgress(item, Math.round(p * 90)),
       processFrame: drawFrame,
