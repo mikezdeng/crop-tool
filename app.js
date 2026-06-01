@@ -218,7 +218,7 @@ function makeEncoder(muxer, W, H) {
     error: e => { encErr = e; },
   });
   encoder.configure({
-    codec: 'avc1.640028', // High Profile L4.0 — hardware on macOS VideoToolbox; latencyMode disables B-frames
+    codec: 'avc1.640033', // High Profile L5.1 — covers up to 4K; latencyMode disables B-frames
     width: W,
     height: H,
     bitrate: 4_000_000,
