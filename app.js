@@ -255,7 +255,7 @@ function makeMuxer(W, H, aTrack) {
     video: { codec: 'avc', width: W, height: H },
     ...(aTrack && { audio: { codec: 'aac', sampleRate: aTrack.audio.sample_rate, numberOfChannels: aTrack.audio.channel_count } }),
     fastStart: 'in-memory',
-    firstTimestampBehavior: 'permissive',
+    firstTimestampBehavior: 'cross-track-offset',
   });
   return { muxer, target };
 }
