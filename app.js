@@ -203,7 +203,28 @@ function addAudioPassthrough(muxer, aTrack, samples, tsOffset, ctsBase = 0) {
   }
 }
 
-function makeEncoder(muxer, W, H) {
+// Try codecs from best to most widely supported; cache per resolution
+const _codecCache = new Map();
+async function selectCodec(W, H) {
+  const key = `${W}x${H}`;
+  if (_codecCache.has(key)) return _codecCache.get(key);
+  const candidates = [
+    'avc1.640033', // H.264 High L5.1 — up to 4K
+    'avc1.640029', // H.264 High L5.0
+    'avc1.640028', // H.264 High L4.0 — 1080p
+    'avc1.4d0028', // H.264 Main L4.0
+    'avc1.42001f', // H.264 Baseline L3.1
+  ];
+  for (const codec of candidates) {
+    try {
+      const { supported } = await VideoEncoder.isConfigSupported({ codec, width: W, height: H, bitrate: 4_000_000, latencyMode: 'realtime' });
+      if (supported) { _codecCache.set(key, codec); return codec; }
+    } catch {}
+  }
+  throw new Error('No H.264 encoder supported in this browser. Try Chrome 94+, Edge 94+, or Safari 16.4+.');
+}
+
+function makeEncoder(muxer, W, H, codec) {
   let encErr = null;
   const encoder = new VideoEncoder({
     output: (chunk, meta) => {
@@ -218,7 +239,7 @@ function makeEncoder(muxer, W, H) {
     error: e => { encErr = e; },
   });
   encoder.configure({
-    codec: 'avc1.640033', // High Profile L5.1 — covers up to 4K; latencyMode disables B-frames
+    codec,
     width: W,
     height: H,
     bitrate: 4_000_000,
@@ -279,8 +300,9 @@ async function cropVideo(item) {
     const outH = evenDim(Math.round(outW * 5 / 4));
     const cropY = Math.round((inH - outH) / 2);
 
+    const codec = await selectCodec(outW, outH);
     const { muxer, target } = makeMuxer(outW, outH, aTrack);
-    const { encoder, getErr } = makeEncoder(muxer, outW, outH);
+    const { encoder, getErr } = makeEncoder(muxer, outW, outH, codec);
 
     const canvas = new OffscreenCanvas(outW, outH);
     const ctx = canvas.getContext('2d');
@@ -416,8 +438,9 @@ async function stitchPair(item, baseData) {
       ? (hookAEnd - hAFirstCts) * 1_000_000 / hAT.timescale
       : hookVideoDuration;
 
+    const codec = await selectCodec(W, H);
     const { muxer, target } = makeMuxer(W, H, hAT || bAT);
-    const { encoder, getErr } = makeEncoder(muxer, W, H);
+    const { encoder, getErr } = makeEncoder(muxer, W, H, codec);
 
     // Skip canvas when dimensions already match — avoids GPU readback on every frame
     const needsScale = evenDim(hVT.video.width) !== W || evenDim(hVT.video.height) !== H;
@@ -481,6 +504,13 @@ function switchTab(name) {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (!window.VideoEncoder || !window.VideoDecoder || !window.VideoFrame || !window.EncodedVideoChunk) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#fff3cd;color:#856404;padding:10px 16px;font-size:13px;border-bottom:1px solid #ffc107;text-align:center;';
+    banner.textContent = '⚠️ Your browser doesn\'t support WebCodecs. This tool requires Chrome 94+, Edge 94+, or Safari 16.4+.';
+    document.body.prepend(banner);
+  }
+
   const dropZone = $('drop-zone'), fileInput = $('file-input');
   dropZone.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', e => { if (e.target.files.length) enqueueCropFiles(Array.from(e.target.files)); fileInput.value = ''; });
