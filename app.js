@@ -329,9 +329,10 @@ async function cropVideo(item) {
 
     setItemProgress(item, 100);
     item.blobUrl = URL.createObjectURL(new Blob([target.buffer], { type: 'video/mp4' }));
-    item.downloadName = `${item.file.name.slice(0, item.file.name.lastIndexOf('.'))}_4x5.mp4`;
+    item.downloadName = `4x5_${item.file.name.slice(0, item.file.name.lastIndexOf('.'))}.mp4`;
     item.state = 'done';
     updateQueueItem(item);
+    updateDlAllBtn(cropQueue, 'crop-dl-all');
   } catch (e) {
     item.state = 'error'; item.error = e.message || 'Unknown error'; updateQueueItem(item);
   } finally { currentItem = null; }
@@ -385,8 +386,9 @@ function startStitch() {
   if (!stitchBaseFile || stitchHookFiles.length === 0) return;
   const baseName = stitchBaseFile.name.slice(0, stitchBaseFile.name.lastIndexOf('.'));
   $('stitch-queue').innerHTML = ''; stitchQueue.length = 0; stitchBaseData = null;
+  $('stitch-dl-all').classList.add('hidden');
   stitchHookFiles.forEach((hookFile, i) => {
-    const item = { hookFile, id: nextId++, state: 'waiting', label: `${baseName}_hook_${i + 1}.mp4`, downloadName: `${baseName}_hook_${i + 1}.mp4` };
+    const item = { hookFile, id: nextId++, state: 'waiting', label: `4x5_${baseName}_hook_${i + 1}.mp4`, downloadName: `4x5_${baseName}_hook_${i + 1}.mp4` };
     stitchQueue.push(item);
     createQueueItem(item, $('stitch-queue'));
   });
@@ -488,9 +490,26 @@ async function stitchPair(item, baseData) {
     setItemProgress(item, 100);
     item.blobUrl = URL.createObjectURL(new Blob([target.buffer], { type: 'video/mp4' }));
     item.state = 'done'; updateQueueItem(item);
+    updateDlAllBtn(stitchQueue, 'stitch-dl-all');
   } catch (e) {
     item.state = 'error'; item.error = e.message || 'Unknown error'; updateQueueItem(item);
   } finally { currentItem = null; }
+}
+
+function updateDlAllBtn(queue, btnId) {
+  const btn = $(btnId);
+  if (btn) btn.classList.toggle('hidden', !queue.some(i => i.state === 'done'));
+}
+
+function downloadAll(queue) {
+  queue.filter(i => i.state === 'done' && i.blobUrl).forEach((item, idx) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href = item.blobUrl;
+      a.download = item.downloadName;
+      a.click();
+    }, idx * 400);
+  });
 }
 
 // ─── Tab switching ────────────────────────────────────────────────────────────
@@ -533,5 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
   hooksInput.addEventListener('change', e => { if (e.target.files.length) setHookFiles(e.target.files); hooksInput.value = ''; });
 
   $('stitch-btn').addEventListener('click', startStitch);
+  $('crop-dl-all').addEventListener('click', () => downloadAll(cropQueue));
+  $('stitch-dl-all').addEventListener('click', () => downloadAll(stitchQueue));
   document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 });

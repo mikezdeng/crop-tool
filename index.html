@@ -22,6 +22,7 @@
         <input type="file" id="file-input" accept=".mp4,.mov,.mkv" multiple hidden>
       </div>
       <ul id="queue-list"></ul>
+      <button id="crop-dl-all" class="btn-dl-all hidden">Download All</button>
     </div>
 
     <!-- STITCH PANEL -->
@@ -48,6 +49,7 @@
 
       <button id="stitch-btn" class="btn-stitch" disabled>Stitch All</button>
       <ul id="stitch-queue"></ul>
+      <button id="stitch-dl-all" class="btn-dl-all hidden">Download All</button>
     </div>
   </div>
 
@@ -58,6 +60,6 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
   <script src="mp4-muxer.js?v=2"></script>
-  <script type="module" src="app.js?v=12"></script>
+  <script type="module" src="app.js?v=13"></script>
 </body>
 </html>
