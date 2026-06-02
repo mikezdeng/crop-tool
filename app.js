@@ -234,7 +234,7 @@ function makeMuxer(W, H, aTrack) {
     video: { codec: 'avc', width: W, height: H },
     ...(aTrack && { audio: { codec: 'aac', sampleRate: aTrack.audio.sample_rate, numberOfChannels: aTrack.audio.channel_count } }),
     fastStart: 'in-memory',
-    firstTimestampBehavior: 'offset',
+    firstTimestampBehavior: 'permissive',
   });
   return { muxer, target };
 }
@@ -419,12 +419,20 @@ async function stitchPair(item, baseData) {
     const { muxer, target } = makeMuxer(W, H, hAT || bAT);
     const { encoder, getErr } = makeEncoder(muxer, W, H);
 
-    const canvas = new OffscreenCanvas(W, H);
-    const ctx = canvas.getContext('2d');
+    // Skip canvas when dimensions already match — avoids GPU readback on every frame
+    const needsScale = evenDim(hVT.video.width) !== W || evenDim(hVT.video.height) !== H;
+    const canvas = needsScale ? new OffscreenCanvas(W, H) : null;
+    const ctx = needsScale ? canvas.getContext('2d') : null;
     const drawFrame = (frame, ts) => {
-      ctx.drawImage(frame, 0, 0, W, H);
+      let outFrame;
+      if (needsScale) {
+        ctx.drawImage(frame, 0, 0, W, H);
+        outFrame = new VideoFrame(canvas, { timestamp: ts });
+      } else {
+        outFrame = new VideoFrame(frame, { timestamp: ts });
+      }
       frame.close();
-      return new VideoFrame(canvas, { timestamp: ts });
+      return outFrame;
     };
 
     const totalFrames = hVS.length + bVS.length;
