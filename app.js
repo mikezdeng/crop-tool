@@ -143,7 +143,7 @@ function setItemProgress(item, pct) {
 
 // ─── Core encode pipeline ─────────────────────────────────────────────────────
 
-async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, frameStart, totalFrames, onProgress, processFrame }) {
+async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, ctsBase = 0, frameStart, totalFrames, onProgress, processFrame }) {
   let frameIdx = frameStart;
   let decErr = null;
 
@@ -176,7 +176,7 @@ async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, f
       seenKey = true;
       decoder.decode(new EncodedVideoChunk({
         type: s.is_sync ? 'key' : 'delta',
-        timestamp: s.cts * 1_000_000 / vTrack.timescale,
+        timestamp: (s.cts - ctsBase) * 1_000_000 / vTrack.timescale,
         duration: s.duration * 1_000_000 / vTrack.timescale,
         data: s.data,
       }));
@@ -188,7 +188,7 @@ async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, f
   return frameIdx;
 }
 
-function addAudioPassthrough(muxer, aTrack, samples, tsOffset) {
+function addAudioPassthrough(muxer, aTrack, samples, tsOffset, ctsBase = 0) {
   if (!aTrack || !samples.length) return;
   const asc = makeAsc(aTrack.audio.sample_rate, aTrack.audio.channel_count);
   const meta = asc ? { decoderConfig: { codec: aTrack.codec, description: asc } } : undefined;
@@ -196,7 +196,7 @@ function addAudioPassthrough(muxer, aTrack, samples, tsOffset) {
     const s = samples[i];
     muxer.addAudioChunk(new EncodedAudioChunk({
       type: 'key',
-      timestamp: s.cts * 1_000_000 / aTrack.timescale + tsOffset,
+      timestamp: (s.cts - ctsBase) * 1_000_000 / aTrack.timescale + tsOffset,
       duration: s.duration * 1_000_000 / aTrack.timescale,
       data: s.data,
     }), i === 0 ? meta : undefined);
@@ -285,8 +285,11 @@ async function cropVideo(item) {
     const canvas = new OffscreenCanvas(outW, outH);
     const ctx = canvas.getContext('2d');
 
+    const vFirstKey = vSamples.find(s => s.is_sync) ?? vSamples[0];
+    const vCtsBase = vFirstKey?.cts ?? 0;
+
     await encodeFrames({
-      box, vTrack, samples: vSamples, encoder, getErr, tsOffset: 0,
+      box, vTrack, samples: vSamples, encoder, getErr, tsOffset: 0, ctsBase: vCtsBase,
       frameStart: 0, totalFrames: vSamples.length,
       onProgress: p => setItemProgress(item, Math.round(p * 90)),
       processFrame: (frame, ts) => {
@@ -299,7 +302,7 @@ async function cropVideo(item) {
     await encoder.flush();
     if (getErr()) throw getErr();
 
-    addAudioPassthrough(muxer, aTrack, aSamples, 0);
+    addAudioPassthrough(muxer, aTrack, aSamples, 0, aSamples[0]?.cts ?? 0);
     muxer.finalize();
 
     setItemProgress(item, 100);
@@ -394,8 +397,24 @@ async function stitchPair(item, baseData) {
 
     const W = evenDim(bVT.video.width), H = evenDim(bVT.video.height);
 
-    const lastHV = hVS[hVS.length - 1];
-    const hookVideoDuration = (lastHV.cts + lastHV.duration) * 1_000_000 / hVT.timescale;
+    // Normalize CTS so clips always start from t=0, regardless of raw container timestamps.
+    // QuickTime-trimmed MOVs keep the original CTS rather than re-indexing to 0.
+    const hFirstKey = hVS.find(s => s.is_sync) ?? hVS[0];
+    const bFirstKey = bVS.find(s => s.is_sync) ?? bVS[0];
+    const hVCtsBase = hFirstKey?.cts ?? 0;
+    const bVCtsBase = bFirstKey?.cts ?? 0;
+
+    // Use max(cts + duration) across all samples for true end time (handles B-frames
+    // where the last-by-DTS sample may not have the highest PTS).
+    const hookVEnd = hVS.reduce((m, s) => Math.max(m, s.cts + s.duration), 0);
+    const hookVideoDuration = (hookVEnd - hVCtsBase) * 1_000_000 / hVT.timescale;
+
+    const hAFirstCts = hAS[0]?.cts ?? 0;
+    const bAFirstCts = bAS[0]?.cts ?? 0;
+    const hookAEnd = hAS.reduce((m, s) => Math.max(m, s.cts + s.duration), 0);
+    const hookAudioDuration = hAT && hAS.length
+      ? (hookAEnd - hAFirstCts) * 1_000_000 / hAT.timescale
+      : hookVideoDuration;
 
     const { muxer, target } = makeMuxer(W, H, hAT || bAT);
     const { encoder, getErr } = makeEncoder(muxer, W, H);
@@ -411,14 +430,18 @@ async function stitchPair(item, baseData) {
     const totalFrames = hVS.length + bVS.length;
 
     const frameIdx = await encodeFrames({
-      box: hBox, vTrack: hVT, samples: hVS, encoder, getErr, tsOffset: 0,
+      box: hBox, vTrack: hVT, samples: hVS, encoder, getErr, tsOffset: 0, ctsBase: hVCtsBase,
       frameStart: 0, totalFrames,
       onProgress: p => setItemProgress(item, Math.round(p * 90)),
       processFrame: drawFrame,
     });
 
+    // Flush encoder between segments so all hook frames are muxed before base frames start.
+    if (getErr()) throw getErr();
+    await encoder.flush();
+
     await encodeFrames({
-      box: bBox, vTrack: bVT, samples: bVS, encoder, getErr, tsOffset: hookVideoDuration,
+      box: bBox, vTrack: bVT, samples: bVS, encoder, getErr, tsOffset: hookVideoDuration, ctsBase: bVCtsBase,
       frameStart: frameIdx, totalFrames,
       onProgress: p => setItemProgress(item, Math.round(p * 90)),
       processFrame: drawFrame,
@@ -427,13 +450,8 @@ async function stitchPair(item, baseData) {
     await encoder.flush();
     if (getErr()) throw getErr();
 
-    addAudioPassthrough(muxer, hAT, hAS, 0);
-
-    const lastHA = hAS.length > 0 ? hAS[hAS.length - 1] : null;
-    const hookAudioDuration = lastHA && hAT
-      ? (lastHA.cts + lastHA.duration) * 1_000_000 / hAT.timescale
-      : hookVideoDuration;
-    addAudioPassthrough(muxer, bAT, bAS, hookAudioDuration);
+    addAudioPassthrough(muxer, hAT, hAS, 0, hAFirstCts);
+    addAudioPassthrough(muxer, bAT, bAS, hookAudioDuration, bAFirstCts);
 
     muxer.finalize();
     setItemProgress(item, 100);
