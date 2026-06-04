@@ -76,29 +76,14 @@
       <section class="guide">
         <p class="guide-title">How it works</p>
         <div class="stitch-diagram">
-          <div class="crop-diagram">
-            <div class="diagram-col">
-              <div class="sd-inputs">
-                <div class="diagram-frame sd-frame-hook">
-                  <div class="sd-hook-zone full">hook</div>
-                </div>
-                <div class="sd-plus">+</div>
-                <div class="diagram-frame sd-frame-base">
-                  <div class="sd-base-zone full">base video</div>
-                </div>
-              </div>
-              <span class="frame-label">2 inputs</span>
-            </div>
-            <div class="diagram-arrow">→</div>
-            <div class="diagram-col sd-col-output">
-              <div class="sd-timeline-wrap">
-                <div class="sd-timeline">
-                  <div class="sd-tl-hook">hook</div>
-                  <div class="sd-tl-base">base video</div>
-                </div>
-                <div class="sd-time-label">▶ plays in this order</div>
-              </div>
-              <span class="frame-label">1 output per hook</span>
+          <div class="sd-flow">
+            <div class="sd-input sd-hook-input"><span>hook</span></div>
+            <div class="sd-plus">+</div>
+            <div class="sd-input sd-base-input"><span>base video</span></div>
+            <div class="sd-flow-arrow">→</div>
+            <div class="sd-timeline">
+              <div class="sd-tl-hook">hook</div>
+              <div class="sd-tl-base">base video</div>
             </div>
           </div>
         </div>
@@ -121,6 +106,6 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
   <script src="mp4-muxer.js?v=2"></script>
-  <script type="module" src="app.js?v=19"></script>
+  <script type="module" src="app.js?v=20"></script>
 </body>
 </html>
