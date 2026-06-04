@@ -220,6 +220,23 @@ async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, c
   return frameIdx;
 }
 
+function addVideoPassthrough(muxer, vTrack, samples, ctsBase, tsOffset, extradata, onProgress, frameStart, totalFrames) {
+  let idx = frameStart;
+  for (const s of samples) {
+    const ts = (s.cts - ctsBase) * 1_000_000 / vTrack.timescale + tsOffset;
+    const chunk = new EncodedVideoChunk({
+      type: s.is_sync ? 'key' : 'delta',
+      timestamp: ts,
+      duration: s.duration * 1_000_000 / vTrack.timescale,
+      data: s.data,
+    });
+    muxer.addVideoChunk(chunk, idx === frameStart && extradata ? { decoderConfig: { codec: vTrack.codec, description: extradata } } : undefined);
+    idx++;
+    onProgress?.(idx / totalFrames);
+  }
+  return idx;
+}
+
 function addAudioPassthrough(muxer, aTrack, samples, tsOffset, ctsBase = 0) {
   if (!aTrack || !samples.length) return;
   const asc = makeAsc(aTrack.audio.sample_rate, aTrack.audio.channel_count);
@@ -498,48 +515,43 @@ async function stitchPair(item, baseData) {
       ? (hookAEnd - hAFirstCts) * 1_000_000 / hAT.timescale
       : hookVideoDuration;
 
-    const codec = await selectCodec(W, H);
     const { muxer, target } = makeMuxer(W, H, hAT || bAT);
-    const { encoder, getErr } = makeEncoder(muxer, W, H, codec);
-
-    // Skip canvas when dimensions already match — avoids GPU readback on every frame
-    const needsScale = evenDim(hVT.video.width) !== W || evenDim(hVT.video.height) !== H;
-    const canvas = needsScale ? new OffscreenCanvas(W, H) : null;
-    const ctx = needsScale ? canvas.getContext('2d') : null;
-    const drawFrame = (frame, ts) => {
-      let outFrame;
-      if (needsScale) {
-        ctx.drawImage(frame, 0, 0, W, H);
-        outFrame = new VideoFrame(canvas, { timestamp: ts });
-      } else {
-        outFrame = new VideoFrame(frame, { timestamp: ts });
-      }
-      frame.close();
-      return outFrame;
-    };
-
     const totalFrames = hVS.length + bVS.length;
+    const onProg = p => setItemProgress(item, Math.round(p * 90));
 
-    const frameIdx = await encodeFrames({
-      box: hBox, vTrack: hVT, samples: hVS, encoder, getErr, tsOffset: 0, ctsBase: hVCtsBase,
-      frameStart: 0, totalFrames,
-      onProgress: p => setItemProgress(item, Math.round(p * 90)),
-      processFrame: drawFrame,
-    });
+    // Stream-copy path: skip decode/encode entirely when hook and base share the same
+    // resolution and codec. Just re-timestamp the raw H.264 chunks into the new container.
+    const hookW = evenDim(hVT.video.width), hookH = evenDim(hVT.video.height);
+    const canPassthrough = hookW === W && hookH === H
+      && hVT.codec.startsWith('avc') && bVT.codec.startsWith('avc');
 
-    // Flush encoder between segments so all hook frames are muxed before base frames start.
-    if (getErr()) throw getErr();
-    await encoder.flush();
+    if (canPassthrough) {
+      const hExtradata = getExtradata(hBox, hVT);
+      const frameIdx = addVideoPassthrough(muxer, hVT, hVS, hVCtsBase, 0, hExtradata, onProg, 0, totalFrames);
+      addVideoPassthrough(muxer, bVT, bVS, bVCtsBase, hookVideoDuration, null, onProg, frameIdx, totalFrames);
+    } else {
+      // Re-encode fallback — only needed when hook and base have different resolutions.
+      const codec = await selectCodec(W, H);
+      const { encoder, getErr } = makeEncoder(muxer, W, H, codec);
+      const canvas = new OffscreenCanvas(W, H);
+      const ctx = canvas.getContext('2d');
+      // Hook frames need scaling to match base dimensions; base frames are already W×H.
+      const scaleFrame = (frame, ts) => { ctx.drawImage(frame, 0, 0, W, H); frame.close(); return new VideoFrame(canvas, { timestamp: ts }); };
+      const copyFrame  = (frame, ts) => { const f = new VideoFrame(frame, { timestamp: ts }); frame.close(); return f; };
 
-    await encodeFrames({
-      box: bBox, vTrack: bVT, samples: bVS, encoder, getErr, tsOffset: hookVideoDuration, ctsBase: bVCtsBase,
-      frameStart: frameIdx, totalFrames,
-      onProgress: p => setItemProgress(item, Math.round(p * 90)),
-      processFrame: drawFrame,
-    });
-
-    await encoder.flush();
-    if (getErr()) throw getErr();
+      const frameIdx = await encodeFrames({
+        box: hBox, vTrack: hVT, samples: hVS, encoder, getErr, tsOffset: 0, ctsBase: hVCtsBase,
+        frameStart: 0, totalFrames, onProgress: onProg, processFrame: scaleFrame,
+      });
+      if (getErr()) throw getErr();
+      await encoder.flush();
+      await encodeFrames({
+        box: bBox, vTrack: bVT, samples: bVS, encoder, getErr, tsOffset: hookVideoDuration, ctsBase: bVCtsBase,
+        frameStart: frameIdx, totalFrames, onProgress: onProg, processFrame: copyFrame,
+      });
+      await encoder.flush();
+      if (getErr()) throw getErr();
+    }
 
     addAudioPassthrough(muxer, hAT, hAS, 0, hAFirstCts);
     addAudioPassthrough(muxer, bAT, bAS, hookAudioDuration, bAFirstCts);
