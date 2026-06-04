@@ -90,10 +90,13 @@
               <span class="frame-label">2 inputs</span>
             </div>
             <div class="diagram-arrow">→</div>
-            <div class="diagram-col">
-              <div class="diagram-frame sd-frame-combined">
-                <div class="sd-hook-zone">hook<br><span class="sd-zone-sub">plays first</span></div>
-                <div class="sd-base-zone">base video<br><span class="sd-zone-sub">plays after</span></div>
+            <div class="diagram-col sd-col-output">
+              <div class="sd-timeline-wrap">
+                <div class="sd-timeline">
+                  <div class="sd-tl-hook">hook</div>
+                  <div class="sd-tl-base">base video</div>
+                </div>
+                <div class="sd-time-label">▶ plays in this order</div>
               </div>
               <span class="frame-label">1 output per hook</span>
             </div>
@@ -118,6 +121,6 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
   <script src="mp4-muxer.js?v=2"></script>
-  <script type="module" src="app.js?v=18"></script>
+  <script type="module" src="app.js?v=19"></script>
 </body>
 </html>
