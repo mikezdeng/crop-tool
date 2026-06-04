@@ -257,3 +257,147 @@ body {
   transition: border-color 0.2s, background 0.2s;
 }
 .btn-dl-all:hover { border-color: #4ade80; background: rgba(74,222,128,0.07); }
+
+/* ── Guide sections ── */
+.guide {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid #1e1e1e;
+}
+
+.guide-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #3a3a3a;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+/* ── Crop diagram ── */
+.crop-diagram {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.diagram-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.diagram-frame {
+  border: 1.5px solid #2a2a2a;
+  border-radius: 5px;
+  overflow: hidden;
+  width: 72px;
+}
+
+.frame-916 { height: 128px; }
+.frame-45  { height: 90px; }
+
+.cut-zone {
+  height: 19px;
+  background: rgba(248, 113, 113, 0.07);
+  border-top: 1px dashed rgba(248, 113, 113, 0.2);
+  border-bottom: 1px dashed rgba(248, 113, 113, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(248, 113, 113, 0.45);
+}
+
+.safe-zone {
+  height: 90px;
+  background: rgba(74, 222, 128, 0.05);
+  border-top: 1px dashed rgba(74, 222, 128, 0.2);
+  border-bottom: 1px dashed rgba(74, 222, 128, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(74, 222, 128, 0.4);
+}
+
+.safe-zone.full {
+  height: 100%;
+  border-top: none;
+  border-bottom: none;
+}
+
+.frame-label {
+  font-size: 0.65rem;
+  color: #3a3a3a;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.diagram-arrow {
+  color: #2a2a2a;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  margin-bottom: 20px;
+}
+
+.guide-text {
+  font-size: 0.82rem;
+  color: #444;
+  line-height: 1.55;
+}
+
+.guide-text strong { color: #666; font-weight: 600; }
+
+.guide-text code {
+  background: #1a1a1a;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.76rem;
+  color: #555;
+}
+
+/* ── Stitch how-to steps ── */
+.guide-steps {
+  list-style: none;
+  counter-reset: steps;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.guide-steps li {
+  counter-increment: steps;
+  display: flex;
+  gap: 12px;
+  font-size: 0.83rem;
+  color: #444;
+  line-height: 1.45;
+}
+
+.guide-steps li::before {
+  content: counter(steps);
+  background: #1a1a1a;
+  color: #333;
+  border-radius: 50%;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.guide-steps strong { color: #666; font-weight: 600; }

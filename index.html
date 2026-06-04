@@ -23,6 +23,28 @@
       </div>
       <ul id="queue-list"></ul>
       <button id="crop-dl-all" class="btn-dl-all hidden">Download All</button>
+
+      <section class="guide">
+        <p class="guide-title">Keep your content centered</p>
+        <div class="crop-diagram">
+          <div class="diagram-col">
+            <div class="diagram-frame frame-916">
+              <div class="cut-zone">trimmed</div>
+              <div class="safe-zone">safe zone</div>
+              <div class="cut-zone">trimmed</div>
+            </div>
+            <span class="frame-label">9 : 16 original</span>
+          </div>
+          <div class="diagram-arrow">→</div>
+          <div class="diagram-col">
+            <div class="diagram-frame frame-45">
+              <div class="safe-zone full">safe zone</div>
+            </div>
+            <span class="frame-label">4 : 5 output</span>
+          </div>
+        </div>
+        <p class="guide-text">Equal slices are removed from the top and bottom. Faces, text, products — anything important needs to be in the <strong>middle portion of the frame</strong> or it will get cut off.</p>
+      </section>
     </div>
 
     <!-- STITCH PANEL -->
@@ -50,6 +72,17 @@
       <button id="stitch-btn" class="btn-stitch" disabled>Stitch All</button>
       <ul id="stitch-queue"></ul>
       <button id="stitch-dl-all" class="btn-dl-all hidden">Download All</button>
+
+      <section class="guide">
+        <p class="guide-title">How to use</p>
+        <ol class="guide-steps">
+          <li><strong>Base video</strong> — the main video that plays after the hook ends. Drop it in the BASE VIDEO box.</li>
+          <li><strong>Hooks</strong> — drop all your hook clips at once. You'll get one output file per hook.</li>
+          <li>Hit <strong>Stitch All</strong> and wait. Each job shows its own progress bar.</li>
+          <li>Download files individually or use <strong>Download All</strong> once they're done.</li>
+        </ol>
+        <p class="guide-text">Output files are named <code>basename_hook_1.mp4</code>, <code>_hook_2.mp4</code>, etc. Hook and base video should be the same resolution.</p>
+      </section>
     </div>
   </div>
 
@@ -60,6 +93,6 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
   <script src="mp4-muxer.js?v=2"></script>
-  <script type="module" src="app.js?v=14"></script>
+  <script type="module" src="app.js?v=15"></script>
 </body>
 </html>
