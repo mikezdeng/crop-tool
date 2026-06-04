@@ -388,7 +388,7 @@ function startStitch() {
   $('stitch-queue').innerHTML = ''; stitchQueue.length = 0; stitchBaseData = null;
   $('stitch-dl-all').classList.add('hidden');
   stitchHookFiles.forEach((hookFile, i) => {
-    const item = { hookFile, id: nextId++, state: 'waiting', label: `4x5_${baseName}_hook_${i + 1}.mp4`, downloadName: `4x5_${baseName}_hook_${i + 1}.mp4` };
+    const item = { hookFile, id: nextId++, state: 'waiting', label: `${baseName}_hook_${i + 1}.mp4`, downloadName: `${baseName}_hook_${i + 1}.mp4` };
     stitchQueue.push(item);
     createQueueItem(item, $('stitch-queue'));
   });
