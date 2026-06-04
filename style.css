@@ -351,11 +351,11 @@ body {
 
 .guide-text {
   font-size: 0.82rem;
-  color: #888;
+  color: #aaa;
   line-height: 1.55;
 }
 
-.guide-text strong { color: #ccc; font-weight: 600; }
+.guide-text strong { color: #e0e0e0; font-weight: 600; }
 
 .guide-text code {
   background: #1a1a1a;
@@ -380,7 +380,7 @@ body {
   display: flex;
   gap: 12px;
   font-size: 0.83rem;
-  color: #888;
+  color: #aaa;
   line-height: 1.45;
 }
 
@@ -400,4 +400,4 @@ body {
   margin-top: 1px;
 }
 
-.guide-steps strong { color: #ccc; font-weight: 600; }
+.guide-steps strong { color: #e0e0e0; font-weight: 600; }
