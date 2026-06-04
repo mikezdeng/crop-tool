@@ -179,6 +179,7 @@ body {
   font-size: 0.88rem;
   color: #666;
   transition: border-color 0.2s, background 0.2s, color 0.2s;
+  position: relative;
 }
 .mini-drop:hover, .mini-drop.drag-over {
   border-color: #4ade80;
@@ -188,6 +189,47 @@ body {
 .mini-drop.has-file {
   border-color: #4ade80;
   color: #4ade80;
+}
+
+/* Base drop clear button + thumbnail */
+.base-drop-clear {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #555;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 7px;
+  line-height: 1;
+  border-radius: 4px;
+}
+.base-drop-clear:hover { color: #f87171; background: rgba(248,113,113,0.1); }
+
+.base-thumb {
+  width: 56px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 5px;
+  display: block;
+  margin: 0 auto 8px;
+}
+
+/* Queue item thumbnails */
+.qi-thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.qi-dur {
+  font-size: 0.72rem;
+  color: #555;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Hook list (shown after hooks are selected) */
@@ -223,6 +265,22 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+}
+
+.hook-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.hook-dur {
+  font-size: 0.72rem;
+  color: #555;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .btn-stitch {

@@ -5,6 +5,36 @@ const show = id => $(id).classList.remove('hidden');
 const hide = id => $(id).classList.add('hidden');
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+function fmtDur(sec) {
+  if (!sec || !isFinite(sec)) return '';
+  const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function getThumbAndDuration(file) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.muted = true;
+    video.preload = 'metadata';
+    let settled = false;
+    const capture = () => {
+      if (settled) return; settled = true;
+      const w = video.videoWidth || 160, h = video.videoHeight || 90;
+      const scale = 90 / Math.max(w, h);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale);
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve({ dataUrl: canvas.toDataURL('image/jpeg', 0.8), duration: isFinite(video.duration) ? video.duration : null });
+    };
+    video.addEventListener('seeked', capture);
+    video.addEventListener('loadedmetadata', () => { video.currentTime = 0.01; });
+    video.addEventListener('error', () => { URL.revokeObjectURL(url); resolve({ dataUrl: null, duration: null }); });
+    video.src = url;
+  });
+}
+
 // ─── mp4box demux ─────────────────────────────────────────────────────────────
 
 function demuxFile(file) {
@@ -109,7 +139,9 @@ function createQueueItem(item, listEl) {
   li.id = `qi-${item.id}`;
   li.innerHTML = `
     <div class="qi-top">
+      <img class="qi-thumb hidden" id="qi-thumb-${item.id}" alt="">
       <span class="qi-name">${esc(item.label)}</span>
+      <span class="qi-dur" id="qi-dur-${item.id}"></span>
       <span class="qi-status status-waiting">Waiting</span>
     </div>
     <div class="qi-progress hidden">
@@ -274,6 +306,11 @@ function enqueueCropFiles(files) {
     const item = { file: f, id: nextId++, state: 'waiting', label: f.name };
     cropQueue.push(item);
     createQueueItem(item, $('queue-list'));
+    getThumbAndDuration(f).then(({ dataUrl, duration }) => {
+      const img = $(`qi-thumb-${item.id}`), dur = $(`qi-dur-${item.id}`);
+      if (img && dataUrl) { img.src = dataUrl; img.classList.remove('hidden'); }
+      if (dur && duration) dur.textContent = fmtDur(duration);
+    });
     if (!ok.includes(ext)) { item.state = 'error'; item.error = 'Use MP4, MOV, or MKV'; updateQueueItem(item); }
   }
   processNextCrop();
@@ -347,7 +384,18 @@ let stitchProcessing = false, stitchBaseData = null;
 function setBaseFile(file) {
   stitchBaseFile = file; stitchBaseData = null;
   $('base-drop').classList.toggle('has-file', !!file);
-  $('base-drop-text').textContent = file ? `✓  ${file.name}` : 'Drop base video or click';
+  $('base-clear').classList.toggle('hidden', !file);
+  const thumb = $('base-thumb');
+  if (!file) {
+    $('base-drop-text').textContent = 'Drop base video or click';
+    thumb.src = ''; thumb.classList.add('hidden');
+  } else {
+    $('base-drop-text').textContent = `✓  ${file.name}`;
+    getThumbAndDuration(file).then(({ dataUrl, duration }) => {
+      if (dataUrl) { thumb.src = dataUrl; thumb.classList.remove('hidden'); }
+      if (duration) $('base-drop-text').textContent = `✓  ${file.name} · ${fmtDur(duration)}`;
+    });
+  }
   updateStitchBtn();
 }
 
@@ -373,8 +421,18 @@ function renderHooksList() {
   stitchHookFiles.forEach((f, i) => {
     const li = document.createElement('li');
     li.className = 'hook-list-item';
-    li.innerHTML = `<span class="hook-num">Hook ${i + 1}</span><span class="hook-filename">${esc(f.name)}</span>`;
+    li.innerHTML = `
+      <span class="hook-num">Hook ${i + 1}</span>
+      <img class="hook-thumb hidden" id="hook-thumb-${i}" alt="">
+      <span class="hook-filename">${esc(f.name)}</span>
+      <span class="hook-dur" id="hook-dur-${i}"></span>
+    `;
     list.appendChild(li);
+    getThumbAndDuration(f).then(({ dataUrl, duration }) => {
+      const img = $(`hook-thumb-${i}`), dur = $(`hook-dur-${i}`);
+      if (img && dataUrl) { img.src = dataUrl; img.classList.remove('hidden'); }
+      if (dur && duration) dur.textContent = fmtDur(duration);
+    });
   });
 }
 
@@ -543,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
   baseDrop.addEventListener('dragleave', () => baseDrop.classList.remove('drag-over'));
   baseDrop.addEventListener('drop', e => { e.preventDefault(); baseDrop.classList.remove('drag-over'); if (e.dataTransfer.files[0]) setBaseFile(e.dataTransfer.files[0]); });
   baseInput.addEventListener('change', e => { if (e.target.files[0]) setBaseFile(e.target.files[0]); baseInput.value = ''; });
+  $('base-clear').addEventListener('click', e => { e.stopPropagation(); setBaseFile(null); });
 
   const hooksDrop = $('hooks-drop'), hooksInput = $('hooks-input');
   hooksDrop.addEventListener('click', () => hooksInput.click());
