@@ -76,23 +76,28 @@
       <section class="guide">
         <p class="guide-title">How it works</p>
         <div class="stitch-diagram">
-          <div class="sd-inputs">
-            <div class="sd-block sd-hook">
-              <span class="sd-block-label">Hook</span>
-              <span class="sd-block-sub">plays first</span>
+          <div class="crop-diagram">
+            <div class="diagram-col">
+              <div class="sd-inputs">
+                <div class="diagram-frame sd-frame-hook">
+                  <div class="sd-hook-zone full">hook</div>
+                </div>
+                <div class="sd-plus">+</div>
+                <div class="diagram-frame sd-frame-base">
+                  <div class="sd-base-zone full">base video</div>
+                </div>
+              </div>
+              <span class="frame-label">2 inputs</span>
             </div>
-            <div class="sd-plus">+</div>
-            <div class="sd-block sd-base">
-              <span class="sd-block-label">Base video</span>
-              <span class="sd-block-sub">plays after</span>
+            <div class="diagram-arrow">→</div>
+            <div class="diagram-col">
+              <div class="diagram-frame sd-frame-combined">
+                <div class="sd-hook-zone">hook<br><span class="sd-zone-sub">plays first</span></div>
+                <div class="sd-base-zone">base video<br><span class="sd-zone-sub">plays after</span></div>
+              </div>
+              <span class="frame-label">1 output per hook</span>
             </div>
           </div>
-          <p class="sd-arrow-down">↓ stitched into one file</p>
-          <div class="sd-timeline">
-            <div class="sd-tl-hook">Hook</div>
-            <div class="sd-tl-base">Base video →</div>
-          </div>
-          <p class="sd-note">3 hooks dropped = 3 output files</p>
         </div>
         <p class="guide-title">How to use</p>
         <ol class="guide-steps">
@@ -113,6 +118,6 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
   <script src="mp4-muxer.js?v=2"></script>
-  <script type="module" src="app.js?v=17"></script>
+  <script type="module" src="app.js?v=18"></script>
 </body>
 </html>
