@@ -74,6 +74,26 @@
       <button id="stitch-dl-all" class="btn-dl-all hidden">Download All</button>
 
       <section class="guide">
+        <p class="guide-title">How it works</p>
+        <div class="stitch-diagram">
+          <div class="sd-inputs">
+            <div class="sd-block sd-hook">
+              <span class="sd-block-label">Hook</span>
+              <span class="sd-block-sub">plays first</span>
+            </div>
+            <div class="sd-plus">+</div>
+            <div class="sd-block sd-base">
+              <span class="sd-block-label">Base video</span>
+              <span class="sd-block-sub">plays after</span>
+            </div>
+          </div>
+          <p class="sd-arrow-down">↓ stitched into one file</p>
+          <div class="sd-timeline">
+            <div class="sd-tl-hook">Hook</div>
+            <div class="sd-tl-base">Base video →</div>
+          </div>
+          <p class="sd-note">3 hooks dropped = 3 output files</p>
+        </div>
         <p class="guide-title">How to use</p>
         <ol class="guide-steps">
           <li><strong>Base video</strong> — the main video that plays after the hook ends. Drop it in the BASE VIDEO box.</li>
@@ -93,6 +113,6 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
   <script src="mp4-muxer.js?v=2"></script>
-  <script type="module" src="app.js?v=16"></script>
+  <script type="module" src="app.js?v=17"></script>
 </body>
 </html>
