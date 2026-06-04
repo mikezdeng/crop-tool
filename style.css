@@ -269,7 +269,7 @@ body {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.1em;
-  color: #3a3a3a;
+  color: #555;
   text-transform: uppercase;
   margin-bottom: 20px;
 }
@@ -301,9 +301,9 @@ body {
 
 .cut-zone {
   height: 19px;
-  background: rgba(248, 113, 113, 0.07);
-  border-top: 1px dashed rgba(248, 113, 113, 0.2);
-  border-bottom: 1px dashed rgba(248, 113, 113, 0.2);
+  background: rgba(248, 113, 113, 0.1);
+  border-top: 1px dashed rgba(248, 113, 113, 0.35);
+  border-bottom: 1px dashed rgba(248, 113, 113, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -311,14 +311,14 @@ body {
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: rgba(248, 113, 113, 0.45);
+  color: #f87171;
 }
 
 .safe-zone {
   height: 90px;
-  background: rgba(74, 222, 128, 0.05);
-  border-top: 1px dashed rgba(74, 222, 128, 0.2);
-  border-bottom: 1px dashed rgba(74, 222, 128, 0.2);
+  background: rgba(74, 222, 128, 0.07);
+  border-top: 1px dashed rgba(74, 222, 128, 0.35);
+  border-bottom: 1px dashed rgba(74, 222, 128, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -326,7 +326,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: rgba(74, 222, 128, 0.4);
+  color: #4ade80;
 }
 
 .safe-zone.full {
@@ -337,13 +337,13 @@ body {
 
 .frame-label {
   font-size: 0.65rem;
-  color: #3a3a3a;
+  color: #666;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .diagram-arrow {
-  color: #2a2a2a;
+  color: #555;
   font-size: 1.4rem;
   flex-shrink: 0;
   margin-bottom: 20px;
@@ -351,18 +351,18 @@ body {
 
 .guide-text {
   font-size: 0.82rem;
-  color: #444;
+  color: #888;
   line-height: 1.55;
 }
 
-.guide-text strong { color: #666; font-weight: 600; }
+.guide-text strong { color: #ccc; font-weight: 600; }
 
 .guide-text code {
   background: #1a1a1a;
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 0.76rem;
-  color: #555;
+  color: #999;
 }
 
 /* ── Stitch how-to steps ── */
@@ -380,14 +380,14 @@ body {
   display: flex;
   gap: 12px;
   font-size: 0.83rem;
-  color: #444;
+  color: #888;
   line-height: 1.45;
 }
 
 .guide-steps li::before {
   content: counter(steps);
-  background: #1a1a1a;
-  color: #333;
+  background: #1e1e1e;
+  color: #666;
   border-radius: 50%;
   min-width: 20px;
   height: 20px;
@@ -400,4 +400,4 @@ body {
   margin-top: 1px;
 }
 
-.guide-steps strong { color: #666; font-weight: 600; }
+.guide-steps strong { color: #ccc; font-weight: 600; }
