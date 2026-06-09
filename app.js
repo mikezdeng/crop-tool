@@ -194,7 +194,12 @@ async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, c
       error: e => reject(new Error(`Decode failed (${vTrack.codec}): ${e.message}. Export as H.264 MP4 and retry.`)),
     });
 
-    const extradata = getExtradata(box, vTrack);
+    // For H.264: convert samples to Annex B and configure without a description.
+    // Passing a description derived from getExtradata() can be malformed for some encoders
+    // (e.g. CapCut), causing a "Decoding error" even on valid H.264. Annex B with inline
+    // SPS+PPS on each IDR frame lets the decoder self-initialize reliably.
+    const avcConfig = vTrack.codec.startsWith('avc') ? getAvcConfig(box, vTrack) : null;
+    const extradata = avcConfig ? null : getExtradata(box, vTrack);
     decoder.configure({
       codec: vTrack.codec,
       codedWidth: vTrack.video.width,
@@ -206,11 +211,14 @@ async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, c
     for (const s of samples) {
       if (!seenKey && !s.is_sync) continue; // VideoDecoder requires first chunk to be a keyframe
       seenKey = true;
+      const data = avcConfig
+        ? avccToAnnexB(s.data, avcConfig.nalLengthSize, avcConfig.spsppsPrefix, s.is_sync)
+        : s.data;
       decoder.decode(new EncodedVideoChunk({
         type: s.is_sync ? 'key' : 'delta',
         timestamp: (s.cts - ctsBase) * 1_000_000 / vTrack.timescale,
         duration: s.duration * 1_000_000 / vTrack.timescale,
-        data: s.data,
+        data,
       }));
     }
     decoder.flush().then(resolve, reject);
@@ -218,6 +226,46 @@ async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, c
 
   if (decErr) throw getErr?.() ?? decErr;
   return frameIdx;
+}
+
+// Extract SPS+PPS from the avcC box as a single Annex B prefix blob, plus the NAL length size.
+// Used to prepend inline parameter sets to IDR frames when decoding without a description.
+function getAvcConfig(box, track) {
+  try {
+    const trak = box.moov?.traks?.find(t => t.tkhd.track_id === track.id);
+    const avcC = trak?.mdia?.minf?.stbl?.stsd?.entries?.[0]?.avcC;
+    if (!avcC) return null;
+    const nalLengthSize = (avcC.lengthSizeMinusOne ?? 3) + 1;
+    const SC = new Uint8Array([0, 0, 0, 1]);
+    const parts = [];
+    for (const s of (avcC.SPS || [])) { const n = s.nalu ?? s; parts.push(SC, n); }
+    for (const p of (avcC.PPS || [])) { const n = p.nalu ?? p; parts.push(SC, n); }
+    const total = parts.reduce((sum, p) => sum + p.length, 0);
+    const spsppsPrefix = new Uint8Array(total);
+    let off = 0;
+    for (const p of parts) { spsppsPrefix.set(p, off); off += p.length; }
+    return { spsppsPrefix, nalLengthSize };
+  } catch { return null; }
+}
+
+// Convert a single H.264 sample from AVCC (length-prefixed NAL units) to Annex B (start-code prefixed).
+// Prepend SPS+PPS on keyframes so the decoder can self-initialize without an external description.
+function avccToAnnexB(data, nalLengthSize, spsppsPrefix, isKeyframe) {
+  const src = data instanceof ArrayBuffer ? new Uint8Array(data) : data;
+  const view = new DataView(src.buffer, src.byteOffset, src.byteLength);
+  const SC = new Uint8Array([0, 0, 0, 1]);
+  const parts = isKeyframe && spsppsPrefix ? [spsppsPrefix] : [];
+  let offset = 0;
+  while (offset + nalLengthSize <= src.byteLength) {
+    let nalLen = 0;
+    for (let i = 0; i < nalLengthSize; i++) nalLen = (nalLen << 8) | view.getUint8(offset + i);
+    parts.push(SC, new Uint8Array(src.buffer, src.byteOffset + offset + nalLengthSize, nalLen));
+    offset += nalLengthSize + nalLen;
+  }
+  const total = parts.reduce((n, p) => n + p.length, 0);
+  const out = new Uint8Array(total); let outOff = 0;
+  for (const p of parts) { out.set(p, outOff); outOff += p.length; }
+  return out;
 }
 
 function addVideoPassthrough(muxer, vTrack, samples, ctsBase, tsOffset, extradata, onProgress, frameStart, totalFrames) {
