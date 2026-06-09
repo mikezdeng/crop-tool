@@ -191,7 +191,7 @@ async function encodeFrames({ box, vTrack, samples, encoder, getErr, tsOffset, c
           onProgress?.(frameIdx / totalFrames);
         } catch (e) { decErr = e; }
       },
-      error: reject,
+      error: e => reject(new Error(`Decode failed (${vTrack.codec}): ${e.message}. Export as H.264 MP4 and retry.`)),
     });
 
     const extradata = getExtradata(box, vTrack);
@@ -348,6 +348,20 @@ async function cropVideo(item) {
   try {
     const { box, vTrack, aTrack, vSamples, aSamples } = await demuxFile(item.file);
     if (!vTrack) throw new Error('No video track found');
+
+    // Pre-flight: confirm WebCodecs can actually decode this codec before touching the encode pipeline.
+    // The native <video> element plays more formats (HEVC, ProRes, etc.) than WebCodecs supports,
+    // so the thumbnail may appear even for files that will fail here.
+    const preExtradata = getExtradata(box, vTrack);
+    const decCheck = await VideoDecoder.isConfigSupported({
+      codec: vTrack.codec,
+      codedWidth: vTrack.video.width,
+      codedHeight: vTrack.video.height,
+      ...(preExtradata && { description: preExtradata }),
+    }).catch(() => ({ supported: false }));
+    if (!decCheck.supported) {
+      throw new Error(`Codec not supported for in-browser processing (${vTrack.codec}). Export the file as H.264 MP4 and try again.`);
+    }
 
     const inW = vTrack.video.width, inH = vTrack.video.height;
     const outW = evenDim(inW);
